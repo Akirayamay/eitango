@@ -1,0 +1,3837 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ship Eigo - 英単語タイピングゲーム</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --conveyor-color: #333;
+            --box-color: #d2b48c;
+            --primary-color: #007bff;
+            --danger-color: #dc3545;
+            --success-color: #28a745;
+            --title-conveyor-speed-top: 102s;
+            --title-conveyor-speed-bottom: 74.8s;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            user-select: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .hud-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+        }
+
+        .stat-box {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #time-display {
+            position: absolute;
+            top: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 5px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        #time-display.warning {
+            color: var(--danger-color);
+        }
+
+        #time-bonus {
+            position: absolute;
+            top: 55px;
+            left: calc(50% + 80px);
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--success-color);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #home-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            pointer-events: auto;
+        }
+
+        #home-btn:hover {
+            background: #5a6268;
+        }
+
+        #quit-btn {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            pointer-events: auto;
+            margin-left: 10px;
+        }
+
+        #quit-btn:hover {
+            background: #bd2130;
+        }
+
+        #combo-display {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--primary-color);
+            pointer-events: none;
+            transition: transform 0.1s;
+            opacity: 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+        }
+
+        #conveyor-belt {
+            position: absolute;
+            width: 120%;
+            height: 200px;
+            background: repeating-linear-gradient(90deg, #444 0px, #444 20px, #333 20px, #333 40px);
+            transform: rotateX(20deg);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            animation: scroll-belt linear infinite;
+        }
+
+        @keyframes scroll-belt {
+            from {
+                background-position: 0 0;
+            }
+
+            to {
+                background-position: 40px 0;
+            }
+        }
+
+        .box {
+            position: absolute;
+            bottom: 35%;
+            left: -150px;
+            width: 160px;
+            height: 120px;
+            background-color: var(--box-color);
+            border: 4px solid #bfa07a;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            z-index: 10;
+        }
+
+        .label {
+            background: white;
+            padding: 5px 10px;
+            border-radius: 2px;
+            text-align: center;
+            width: 80%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .word-en {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .word-jp {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 2px;
+        }
+
+        .word-romaji {
+            font-size: 0.8rem;
+            color: #888;
+            font-family: monospace;
+        }
+
+        .char-typed {
+            color: #ccc;
+        }
+
+        .char-target {
+            color: var(--danger-color);
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .box.memorization .label {
+            background: #fff8e1;
+            border: 1px dashed #ccc;
+        }
+
+        /* 暗記モードでもローマ字は通常表示 */
+
+        /* 全レベル茶色で統一 */
+
+        .stamp {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg) scale(0);
+            border: 3px solid var(--success-color);
+            color: var(--success-color);
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 5px 10px;
+            text-transform: uppercase;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .stamp.show {
+            transform: translate(-50%, -50%) rotate(-15deg) scale(1);
+            opacity: 1;
+        }
+
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: #333;
+            font-size: 3rem;
+            text-shadow: 2px 2px #ddd;
+        }
+
+        h2 {
+            color: #555;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .btn-lvl {
+            background: #fff;
+            border: 2px solid #ddd;
+            color: #555;
+        }
+
+        .btn-lvl:hover,
+        .btn-lvl.selected {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .btn-mode {
+            background: #f8f9fa;
+            border: 2px solid #333;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .btn-mode:hover,
+        .btn-mode.selected {
+            background: #333;
+            color: white;
+        }
+
+        .btn-start {
+            background: var(--success-color);
+            color: white;
+            font-size: 1.5rem;
+            padding: 20px 50px;
+            margin-top: 20px;
+        }
+
+        .btn-start:hover {
+            background: #218838;
+        }
+
+        .mute-btn {
+            /* 削除予定だがCSSは残しても影響なし、あるいは削除 */
+            display: none;
+        }
+
+        /* Preview Screen */
+        /* プレビュー画面・リザルト画面のレイアウト最適化 */
+        #preview-screen,
+        #result-screen {
+            position: absolute;
+            /* 全画面を覆う */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 200;
+            /* 最前面 */
+            background: var(--bg-color);
+            /* 背景色 */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .preview-content,
+        .result-content {
+            width: 98%;
+            /* ほぼ全幅 */
+            max-width: none;
+            /* 制限解除 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+        }
+
+        .preview-title,
+        .result-title {
+            font-size: 1.5rem;
+            /* サイズ縮小 */
+            margin-bottom: 5px;
+            margin-top: 0;
+            color: #333;
+        }
+
+        .preview-subtitle {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        /* モード選択・フィルター */
+        #game-mode-select {
+            margin-bottom: 5px !important;
+            font-size: 0.85rem;
+        }
+
+        .filter-buttons {
+            margin-bottom: 10px;
+            gap: 3px;
+        }
+
+        .btn-filter {
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            border-radius: 12px;
+        }
+
+        #word-list-container,
+        #word-history {
+            flex-grow: 1;
+            /* 余ったスペースを全部使う */
+            width: 100%;
+            overflow-y: auto;
+            /* 縦スクロール */
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            margin-bottom: 10px;
+
+            /* カードを3列グリッドで配置 */
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            align-content: start;
+            /* 上詰め */
+        }
+
+        .btn-start,
+        .btn-home {
+            padding: 8px 20px;
+            /* ボタンサイズ縮小 */
+            font-size: 1rem;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        /* リザルト画面特有 */
+        .score-box {
+            background: white;
+            padding: 8px 15px;
+            /* パディング圧縮 */
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        .score-value {
+            font-size: 1.8rem;
+            /* 少し小さく */
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .score-label {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .rank-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-top: 2px;
+        }
+
+        .word-card {
+            background: white;
+            border-radius: 6px;
+            padding: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            /* 垂直中央 */
+            justify-content: flex-start;
+            gap: 5px;
+            font-size: 0.9rem;
+
+            /* グリッドアイテムとしての挙動 */
+            min-width: 0;
+            /* flex/grid内での縮小崩れ防止 */
+        }
+
+        .word-card .en {
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #333;
+            /* はみ出し防止 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .word-card .ja {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .word-card .ro {
+            font-size: 0.75rem;
+            color: #999;
+            margin-left: auto;
+        }
+
+        .result-stats {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+
+
+        .btn-edit {
+            background: #6c757d;
+        }
+
+        .btn-save {
+            background: var(--success-color);
+        }
+
+        .word-card .ro {
+            color: #888;
+            font-size: 0.8rem;
+            font-family: monospace;
+        }
+
+        .space-hint {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* タイトル画面のコンベア */
+        .title-conveyor {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            background: repeating-linear-gradient(90deg, #555 0px, #555 20px, #444 20px, #444 40px);
+            overflow: hidden;
+            z-index: 0;
+            /* 背景扱い */
+        }
+
+        /* 品詞タグ */
+        .pos-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: white;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+
+        .pos-名詞 {
+            background: #007bff;
+        }
+
+        .pos-動詞 {
+            background: #28a745;
+        }
+
+        .pos-形容詞 {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .pos-副詞 {
+            background: #17a2b8;
+        }
+
+        .pos-接続詞 {
+            background: #6610f2;
+        }
+
+        .pos-その他 {
+            background: #6c757d;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-filter {
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            border: 1px solid #ccc;
+            background: white;
+            border-radius: 15px;
+            cursor: pointer;
+        }
+
+        .btn-filter.selected {
+            background: #333;
+            color: white;
+            border-color: #333;
+        }
+
+        #title-screen {
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            /* Center horizontally */
+            height: 100vh;
+            padding-bottom: 40px;
+            /* Reduced bottom padding */
+            box-sizing: border-box;
+            width: 100%;
+            overflow: hidden;
+            /* Prevent scrolling */
+        }
+
+        #title-screen h1,
+        #title-screen button,
+        #title-screen .btn-group {
+            position: relative;
+            z-index: 20;
+        }
+
+        #title-screen h1 {
+            margin-bottom: 10px;
+            /* Reduced margin */
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            /* Slightly smaller */
+            max-width: 90%;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        #title-screen h2 {
+            margin-top: 5px;
+            /* Reduced */
+            margin-bottom: 5px;
+            font-size: 1rem;
+            /* Smaller font */
+        }
+
+        /* Compact Button Groups */
+        #title-screen .btn-group {
+            margin-bottom: 10px;
+            /* Reduced from global default */
+            gap: 5px;
+        }
+
+        /* Compact Buttons inside Title Screen */
+        #title-screen button {
+            padding: 8px 16px;
+            /* Reduced padding */
+            font-size: 1rem;
+            position: relative;
+            z-index: 20;
+        }
+
+        .btn-start {
+            margin-top: 15px;
+            /* Reduced margin */
+            padding: 10px 40px !important;
+            /* Override specific size */
+            font-size: 1.2rem !important;
+        }
+
+        .title-conveyor.top {
+            top: 0;
+        }
+
+        .title-conveyor.bottom {
+            bottom: 0;
+        }
+
+        .title-conveyor .boxes-container {
+            display: flex;
+            align-items: center;
+            width: 300%;
+            height: 100%;
+            animation: scroll-boxes var(--title-conveyor-speed-top) linear infinite;
+        }
+
+        .title-conveyor.bottom .boxes-container {
+            animation: scroll-boxes-reverse var(--title-conveyor-speed-bottom) linear infinite;
+        }
+
+        .title-conveyor .title-box {
+            height: 28px;
+            background: #d2b48c;
+            border: 2px solid #a0826d;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        @keyframes scroll-boxes {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-33.33%);
+            }
+        }
+
+        @keyframes scroll-boxes-reverse {
+            0% {
+                transform: translateX(-33.33%);
+            }
+
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        /* Factory Illustrations */
+        .factory-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 上から見た作業員（リアルなデザイン） */
+        .worker {
+            position: absolute;
+            width: 45px;
+            height: 55px;
+        }
+
+        /* 体（作業着） */
+        .worker .body {
+            position: absolute;
+            top: 18px;
+            left: 8px;
+            width: 30px;
+            height: 35px;
+            background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%);
+            border-radius: 8px 8px 12px 12px;
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .worker.yellow .body {
+            background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%);
+        }
+
+        .worker.red .body {
+            background: linear-gradient(135deg, #ef5350 0%, #c62828 100%);
+        }
+
+        .worker.green .body {
+            background: linear-gradient(135deg, #66bb6a 0%, #2e7d32 100%);
+        }
+
+        /* 頭（ヘルメット） */
+        .worker .head {
+            position: absolute;
+            top: 0;
+            left: 10px;
+            width: 26px;
+            height: 22px;
+            background: linear-gradient(135deg, #ffeb3b 0%, #f9a825 100%);
+            border-radius: 50% 50% 40% 40%;
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .worker .head::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 5px;
+            width: 16px;
+            height: 10px;
+            background: #ffcc80;
+            border-radius: 50%;
+        }
+
+        /* 腕 */
+        .worker .arm-left,
+        .worker .arm-right {
+            position: absolute;
+            top: 25px;
+            width: 10px;
+            height: 20px;
+            background: #ffcc80;
+            border-radius: 5px;
+        }
+
+        .worker .arm-left {
+            left: 0;
+            transform: rotate(-15deg);
+        }
+
+        .worker .arm-right {
+            right: 0;
+            transform: rotate(15deg);
+        }
+
+        /* 積まれた段ボール */
+        .stacked-boxes {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .mini-box {
+            width: 40px;
+            height: 25px;
+            background: #d2b48c;
+            border: 2px solid #a0826d;
+            border-radius: 2px;
+        }
+
+        /* フォークリフト */
+        .forklift {
+            position: absolute;
+            width: 50px;
+            height: 80px;
+            background: #ffeb3b;
+            border: 3px solid #f9a825;
+            border-radius: 5px;
+        }
+
+        .forklift::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 15px;
+            width: 20px;
+            height: 20px;
+            background: #333;
+            border-radius: 50%;
+        }
+
+        .forklift::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: -10px;
+            width: 70px;
+            height: 10px;
+            background: #666;
+            border-radius: 3px;
+        }
+
+        /* 工場の柱 */
+        .pillar {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #78909c;
+            border: 2px solid #546e7a;
+        }
+
+        /* 安全ライン */
+        .safety-line {
+            position: absolute;
+            height: 8px;
+            background: repeating-linear-gradient(90deg, #ffc107 0px, #ffc107 20px, #333 20px, #333 40px);
+        }
+
+        /* トースト通知 */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 3000;
+        }
+
+        .toast {
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .btn-add-mylist {
+            background: #ffc107;
+            border: none;
+            color: #333;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: transform 0.1s;
+            margin-left: 5px;
+            font-weight: bold;
+        }
+
+        .btn-add-mylist:hover {
+            transform: scale(1.1);
+        }
+
+        .btn-add-mylist:active {
+            transform: scale(0.9);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="ui-layer" class="hidden">
+        <div class="hud-bar">
+            <div>
+                <button id="home-btn" onclick="goHome()">🏠 ホーム</button>
+                <button id="quit-btn" onclick="endGame()">⏹️ 終了</button>
+                <span style="margin-left:15px;">ターゲット: <span id="current-target">---</span></span>
+            </div>
+            <div class="stat-box">売上: ￥<span id="score">0</span></div>
+        </div>
+        <div id="time-display">2:00</div>
+        <div id="time-bonus">+0s</div>
+        <div id="combo-display">0 コンボ!</div>
+    </div>
+    <div id="game-container">
+        <div id="conveyor-belt"></div>
+
+        <!-- 工場の装飾イラスト -->
+        <div class="factory-bg">
+            <!-- 安全ライン（黄色と黒のテープ） -->
+            <div class="safety-line" style="top: 18%; left: 0; width: 100%;"></div>
+            <div class="safety-line" style="bottom: 12%; left: 0; width: 100%;"></div>
+
+            <!-- 積まれた段ボール -->
+            <div class="stacked-boxes" style="top: 20%; left: 5%;">
+                <div class="mini-box"></div>
+                <div class="mini-box"></div>
+                <div class="mini-box"></div>
+            </div>
+            <div class="stacked-boxes" style="top: 22%; right: 5%;">
+                <div class="mini-box"></div>
+                <div class="mini-box"></div>
+            </div>
+            <div class="stacked-boxes" style="bottom: 14%; right: 8%;">
+                <div class="mini-box"></div>
+                <div class="mini-box"></div>
+                <div class="mini-box"></div>
+            </div>
+            <div class="stacked-boxes" style="bottom: 16%; left: 8%;">
+                <div class="mini-box"></div>
+                <div class="mini-box"></div>
+            </div>
+            <div class="stacked-boxes" style="top: 25%; left: 25%;">
+                <div class="mini-box"></div>
+            </div>
+            <div class="stacked-boxes" style="bottom: 18%; right: 25%;">
+                <div class="mini-box"></div>
+                <div class="mini-box"></div>
+            </div>
+        </div>
+    </div>
+    <div id="title-screen" class="screen">
+        <!-- 上部コンベア -->
+        <div class="title-conveyor top">
+            <div class="boxes-container">
+                <div class="title-box" style="width:40px; margin-left:20px;"></div>
+                <div class="title-box" style="width:30px; margin-left:80px;"></div>
+                <div class="title-box" style="width:45px; margin-left:50px;"></div>
+                <div class="title-box" style="width:35px; margin-left:100px;"></div>
+                <div class="title-box" style="width:38px; margin-left:60px;"></div>
+                <div class="title-box" style="width:32px; margin-left:90px;"></div>
+                <div class="title-box" style="width:42px; margin-left:40px;"></div>
+                <div class="title-box" style="width:36px; margin-left:70px;"></div>
+                <div class="title-box" style="width:40px; margin-left:55px;"></div>
+                <div class="title-box" style="width:34px; margin-left:85px;"></div>
+                <div class="title-box" style="width:38px; margin-left:45px;"></div>
+                <div class="title-box" style="width:44px; margin-left:75px;"></div>
+                <div class="title-box" style="width:33px; margin-left:65px;"></div>
+                <div class="title-box" style="width:41px; margin-left:95px;"></div>
+                <div class="title-box" style="width:37px; margin-left:35px;"></div>
+                <!-- 2回目 -->
+                <div class="title-box" style="width:40px; margin-left:20px;"></div>
+                <div class="title-box" style="width:30px; margin-left:80px;"></div>
+                <div class="title-box" style="width:45px; margin-left:50px;"></div>
+                <div class="title-box" style="width:35px; margin-left:100px;"></div>
+                <div class="title-box" style="width:38px; margin-left:60px;"></div>
+                <div class="title-box" style="width:32px; margin-left:90px;"></div>
+                <div class="title-box" style="width:42px; margin-left:40px;"></div>
+                <div class="title-box" style="width:36px; margin-left:70px;"></div>
+                <div class="title-box" style="width:40px; margin-left:55px;"></div>
+                <div class="title-box" style="width:34px; margin-left:85px;"></div>
+                <div class="title-box" style="width:38px; margin-left:45px;"></div>
+                <div class="title-box" style="width:44px; margin-left:75px;"></div>
+                <div class="title-box" style="width:33px; margin-left:65px;"></div>
+                <div class="title-box" style="width:41px; margin-left:95px;"></div>
+                <div class="title-box" style="width:37px; margin-left:35px;"></div>
+                <!-- 3回目 -->
+                <div class="title-box" style="width:40px; margin-left:20px;"></div>
+                <div class="title-box" style="width:30px; margin-left:80px;"></div>
+                <div class="title-box" style="width:45px; margin-left:50px;"></div>
+                <div class="title-box" style="width:35px; margin-left:100px;"></div>
+                <div class="title-box" style="width:38px; margin-left:60px;"></div>
+                <div class="title-box" style="width:32px; margin-left:90px;"></div>
+                <div class="title-box" style="width:42px; margin-left:40px;"></div>
+                <div class="title-box" style="width:36px; margin-left:70px;"></div>
+                <div class="title-box" style="width:40px; margin-left:55px;"></div>
+                <div class="title-box" style="width:34px; margin-left:85px;"></div>
+                <div class="title-box" style="width:38px; margin-left:45px;"></div>
+                <div class="title-box" style="width:44px; margin-left:75px;"></div>
+                <div class="title-box" style="width:33px; margin-left:65px;"></div>
+                <div class="title-box" style="width:41px; margin-left:95px;"></div>
+                <div class="title-box" style="width:37px; margin-left:35px;"></div>
+            </div>
+        </div>
+
+        <h1>Ship Eigo</h1>
+        <!-- BGMボタン削除 -->
+        <h2>レベル選択</h2>
+        <div class="btn-group" id="level-buttons">
+            <button class="btn-lvl" onclick="selectLevel(1)">📖 単語リスト (300語)</button>
+        </div>
+        <h2>出題形式</h2>
+        <div class="btn-group" id="format-buttons">
+            <button class="btn-mode selected" onclick="selectFormat('ja-typing')">和訳タイピング</button>
+            <button class="btn-mode" onclick="selectFormat('en-typing')">英単語タイピング</button>
+        </div>
+        <h2>モード選択</h2>
+        <div class="btn-group" id="mode-buttons">
+            <button class="btn-mode selected" onclick="selectMode('practice')">練習モード（普通）</button>
+            <button class="btn-mode" onclick="selectMode('memorization')">暗記モード（難しい）</button>
+        </div>
+        <h2>スピード選択</h2>
+        <div class="btn-group" id="speed-buttons">
+            <button class="btn-mode selected" onclick="selectSpeed(1.0)">通常</button>
+            <button class="btn-mode" onclick="selectSpeed(1.5)">高速</button>
+            <button class="btn-mode" onclick="selectSpeed(2.0)">超高速</button>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:center; margin-bottom: 20px;">
+            <button class="btn-start" onclick="showPreview()">ゲームスタート</button>
+            <div style="display:flex; gap:20px;">
+                <button onclick="showHistory()"
+                    style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">📊
+                    学習履歴</button>
+                <button onclick="openMyListModal()"
+                    style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">📖
+                    マイ単語リスト</button>
+                <button onclick="openHelpModal()"
+                    style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">📖
+                    遊び方</button>
+            </div>
+        </div>
+
+        <!-- 下部コンベア -->
+        <div class="title-conveyor bottom">
+            <div class="boxes-container">
+                <div class="title-box" style="width:35px; margin-left:30px;"></div>
+                <div class="title-box" style="width:42px; margin-left:70px;"></div>
+                <div class="title-box" style="width:38px; margin-left:55px;"></div>
+                <div class="title-box" style="width:33px; margin-left:90px;"></div>
+                <div class="title-box" style="width:45px; margin-left:40px;"></div>
+                <div class="title-box" style="width:36px; margin-left:80px;"></div>
+                <div class="title-box" style="width:39px; margin-left:50px;"></div>
+                <div class="title-box" style="width:34px; margin-left:95px;"></div>
+                <div class="title-box" style="width:41px; margin-left:60px;"></div>
+                <div class="title-box" style="width:37px; margin-left:45px;"></div>
+                <div class="title-box" style="width:43px; margin-left:85px;"></div>
+                <!-- 2回目 -->
+                <div class="title-box" style="width:35px; margin-left:30px;"></div>
+                <div class="title-box" style="width:42px; margin-left:70px;"></div>
+                <div class="title-box" style="width:38px; margin-left:55px;"></div>
+                <div class="title-box" style="width:33px; margin-left:90px;"></div>
+                <div class="title-box" style="width:45px; margin-left:40px;"></div>
+                <div class="title-box" style="width:36px; margin-left:80px;"></div>
+                <div class="title-box" style="width:39px; margin-left:50px;"></div>
+                <div class="title-box" style="width:34px; margin-left:95px;"></div>
+                <div class="title-box" style="width:41px; margin-left:60px;"></div>
+                <div class="title-box" style="width:37px; margin-left:45px;"></div>
+                <div class="title-box" style="width:43px; margin-left:85px;"></div>
+                <!-- 3回目 -->
+                <div class="title-box" style="width:35px; margin-left:30px;"></div>
+                <div class="title-box" style="width:42px; margin-left:70px;"></div>
+                <div class="title-box" style="width:38px; margin-left:55px;"></div>
+                <div class="title-box" style="width:33px; margin-left:90px;"></div>
+                <div class="title-box" style="width:45px; margin-left:40px;"></div>
+                <div class="title-box" style="width:36px; margin-left:80px;"></div>
+                <div class="title-box" style="width:39px; margin-left:50px;"></div>
+                <div class="title-box" style="width:34px; margin-left:95px;"></div>
+                <div class="title-box" style="width:41px; margin-left:60px;"></div>
+                <div class="title-box" style="width:37px; margin-left:45px;"></div>
+                <div class="title-box" style="width:43px; margin-left:85px;"></div>
+            </div>
+        </div>
+    </div>
+    <div id="preview-screen" class="hidden">
+        <div class="preview-content">
+            <h1 class="preview-title"> 出題単語確認</h1>
+            <div class="preview-subtitle">
+                Level:<span id="preview-level">1</span> / <span id="preview-mode">練習モード</span>
+            </div>
+            <!-- ここにJSで動的にボタン類が挿入されますが、CSSで制御します -->
+
+            <div id="word-list-container">
+                <!-- 単語リスト -->
+            </div>
+
+            <div style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">
+                スペースキーでスタート
+            </div>
+            <button class="btn-start" onclick="startGame()">スタート！</button>
+            <button class="btn-home" onclick="goHome()">タイトルに戻る</button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <div class="result-content">
+            <h2 class="result-title">結果発表！</h2>
+
+            <div class="score-box">
+                <div class="score-label">スコア</div>
+                <div class="score-value" id="final-score">0</div>
+                <div class="rank-display" id="final-rank"></div>
+                <div style="display:flex; justify-content:space-around; margin-top:5px; font-size:0.8rem;">
+                    <div>最大コンボ: <span id="final-combo" style="font-weight:bold;">0</span></div>
+                    <div>正解率: <span id="final-accuracy" style="font-weight:bold;">0%</span></div>
+                </div>
+            </div>
+
+            <div class="result-stats">
+                <div>総単語数: <span id="total-count">0</span></div>
+                <div style="color:var(--success-color)">正解: <span id="correct-count">0</span></div>
+            </div>
+
+            <!-- フィルターボタン -->
+            <div class="filter-buttons" style="margin:15px 0 10px; display:flex; gap:5px; justify-content:center;">
+                <button class="btn-filter selected" onclick="filterHistory('all')">すべて</button>
+                <button class="btn-filter" onclick="filterHistory('perfect')">正解</button>
+                <button class="btn-filter" onclick="filterHistory('suspicious')">怪しい</button>
+                <button class="btn-filter" onclick="filterHistory('failed')">不正解</button>
+            </div>
+
+            <div id="word-history">
+                <!-- 履歴リスト -->
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px;">
+                <button class="btn-start" onclick="retryGame()" style="padding:10px 20px; font-size:1rem;">🔄
+                    もう一度プレイ</button>
+                <button class="btn-start" id="retry-mistakes-btn" onclick="retryMistakesOnly()"
+                    style="padding:10px 20px; font-size:1rem; background:#ff6b35;">📝 間違えた・怪しい単語を復習</button>
+                <button class="btn-home" onclick="goHome()" style="padding:10px 20px; font-size:1rem;">🏠
+                    タイトルに戻る</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- カスタム単語追加モーダル -->
+    <div id="custom-word-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:1000;">
+        <div
+            style="background:white; padding:25px; border-radius:15px; max-width:550px; width:90%; height:85%; display:flex; flex-direction:column; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 15px 0; color:#333; text-align:center;">📝 カスタム単語を追加</h3>
+
+            <!-- タブボタン -->
+            <div style="display:flex; border-bottom:1px solid #ddd; margin-bottom:15px;">
+                <button id="tab-btn-manual" onclick="switchCustomTab('manual')"
+                    style="flex:1; padding:10px; background:none; border:none; border-bottom:3px solid #28a745; font-weight:bold; cursor:pointer;">手動・一括入力</button>
+                <button id="tab-btn-select" onclick="switchCustomTab('select')"
+                    style="flex:1; padding:10px; background:none; border:none; border-bottom:3px solid transparent; color:#666; cursor:pointer;">リストから選択</button>
+            </div>
+
+            <!-- 手動入力タブ -->
+            <div id="tab-manual" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+                <div style="display:flex; flex-direction:column; gap:15px;">
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom:5px;">英単語</label>
+                        <input type="text" id="custom-en" placeholder="例: hello"
+                            style="width:100%; padding:10px; border:2px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom:5px;">日本語（ひらがな）</label>
+                        <input type="text" id="custom-ja" placeholder="例: こんにちは"
+                            style="width:100%; padding:10px; border:2px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-weight:bold; display:block; margin-bottom:5px;">品詞</label>
+                        <select id="custom-pos"
+                            style="width:100%; padding:10px; border:2px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box;">
+                            <option value="名詞">名詞</option>
+                            <option value="動詞">動詞</option>
+                            <option value="形容詞">形容詞</option>
+                            <option value="副詞">副詞</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+                        <button onclick="addCustomWord()"
+                            style="padding:12px 25px; background:#28a745; color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; font-weight:bold;">追加</button>
+                    </div>
+                </div>
+                <div style="margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
+                    <div style="font-size:0.85rem; color:#666; text-align:center;">
+                        <strong>一括追加:</strong> 複数の単語を一度に追加できます
+                    </div>
+                    <textarea id="bulk-add-text" placeholder="形式: 英単語,ひらがな,品詞&#10;例:&#10;hello,こんにちは,名詞&#10;run,はしる,動詞"
+                        style="width:100%; height:80px; margin-top:10px; padding:8px; border:2px solid #ddd; border-radius:8px; font-size:0.85rem; box-sizing:border-box; resize:none;"></textarea>
+                    <button onclick="bulkAddCustomWords()"
+                        style="width:100%; margin-top:8px; padding:8px; background:#17a2b8; color:white; border:none; border-radius:8px; font-size:0.9rem; cursor:pointer;">一括追加</button>
+                </div>
+            </div>
+
+            <!-- リスト選択タブ -->
+            <div id="tab-select" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:hidden;">
+                <div style="margin-bottom:10px; display:flex; flex-direction:column; gap:5px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <label style="font-weight:bold; min-width:60px;">レベル:</label>
+                        <select id="select-source-level" onchange="renderSourceWordList()"
+                            style="padding:5px; border-radius:4px; border:1px solid #ddd; flex:1;">
+                            <option value="1">Lv.1 小学生</option>
+                            <option value="2">Lv.2 中学生</option>
+                            <option value="3">Lv.3 高校生</option>
+                            <option value="4">Lv.4 大学生</option>
+                            <option value="5">Lv.5 日常会話</option>
+                            <option value="6">Lv.6 TOEIC 700</option>
+                            <option value="7">Lv.7 TOEIC 800</option>
+                            <option value="9">Lv.9 金フレ730</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <label style="font-weight:bold; min-width:60px;">品詞:</label>
+                        <select id="select-source-pos" onchange="renderSourceWordList()"
+                            style="padding:5px; border-radius:4px; border:1px solid #ddd; flex:1;">
+                            <option value="all">すべて</option>
+                            <option value="名詞">名詞</option>
+                            <option value="動詞">動詞</option>
+                            <option value="形容詞">形容詞</option>
+                            <option value="副詞">副詞</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <button onclick="selectAllSource()"
+                        style="font-size:0.8rem; padding:2px 8px; cursor:pointer;">全選択</button>
+                    <button onclick="deselectAllSource()"
+                        style="font-size:0.8rem; padding:2px 8px; cursor:pointer;">全解除</button>
+                </div>
+                <div id="source-word-list"
+                    style="flex:1; overflow-y:auto; border:1px solid #ddd; border-radius:8px; padding:5px;">
+                    <!-- JSで描画 -->
+                </div>
+                <button onclick="addSelectedWordsFromSource()"
+                    style="width:100%; margin-top:10px; padding:12px; background:#007bff; color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; font-weight:bold;">選択した単語を追加</button>
+            </div>
+
+            <div
+                style="display:flex; justify-content:center; margin-top:15px; padding-top:10px; border-top:1px solid #eee;">
+                <button onclick="closeCustomModal()"
+                    style="padding:10px 25px; background:#6c757d; color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; font-weight:bold;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学習履歴モーダル -->
+    <div id="history-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:1000;">
+        <div
+            style="background:white; padding:25px; border-radius:15px; max-width:600px; width:90%; height:80%; display:flex; flex-direction:column; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 10px 0; color:#333; text-align:center;">📊 学習履歴</h3>
+
+            <!-- 履歴切り替えタブ -->
+            <div
+                style="display:flex; justify-content:center; gap:10px; margin-bottom:15px; border-bottom:1px solid #ddd; padding-bottom:5px;">
+                <button id="hist-tab-ja" onclick="switchHistoryTab('ja-typing')"
+                    style="background:none; border:none; border-bottom:3px solid #007bff; font-weight:bold; padding:5px 10px; cursor:pointer; color:#007bff;">
+                    和訳タイピング
+                </button>
+                <button id="hist-tab-en" onclick="switchHistoryTab('en-typing')"
+                    style="background:none; border:none; border-bottom:3px solid transparent; font-weight:bold; padding:5px 10px; cursor:pointer; color:#666;">
+                    英単語タイピング
+                </button>
+            </div>
+
+            <div
+                style="display:flex; justify-content:space-around; margin-bottom:15px; background:#f8f9fa; padding:10px; border-radius:8px;">
+                <div style="text-align:center;">
+                    <div style="font-size:0.8rem; color:#666;">総プレイ</div>
+                    <div style="font-weight:bold; font-size:1.1rem;" id="hist-total-sessions">0</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.8rem; color:#666;">平均正解率</div>
+                    <div style="font-weight:bold; font-size:1.1rem;" id="hist-avg-accuracy">0%</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.8rem; color:#666;">累計スコア</div>
+                    <div style="font-weight:bold; font-size:1.1rem;" id="hist-total-score">0</div>
+                </div>
+            </div>
+
+            <!-- 苦手単語リスト -->
+            <h4 style="margin:0 0 10px 0; color:#555;">⚠️ 苦手な単語（トップ10）</h4>
+            <div id="weak-words-list"
+                style="height:150px; overflow-y:auto; margin-bottom:15px; border:1px solid #eee; border-radius:8px; padding:5px;">
+                <!-- JS生成 -->
+            </div>
+
+            <!-- プレイ履歴リスト -->
+            <h4 style="margin:0 0 10px 0; color:#555;">📜 プレイ履歴（最新50件）</h4>
+            <div id="play-history-list"
+                style="height:150px; overflow-y:auto; margin-bottom:15px; border:1px solid #eee; border-radius:8px; padding:5px;">
+                <!-- JS生成 -->
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                <button onclick="clearHistoryData()"
+                    style="padding:10px 15px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:0.9rem; cursor:pointer;">🗑️
+                    履歴・苦手を消去</button>
+                <button onclick="closeHistoryModal()"
+                    style="padding:10px 25px; background:#6c757d; color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; font-weight:bold;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遊び方・ルールモーダル -->
+    <div id="help-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:2000;">
+        <div
+            style="background:white; padding:30px; border-radius:15px; max-width:600px; width:90%; max-height:90vh; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.3); position:relative;">
+            <button onclick="closeHelpModal()"
+                style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:#666;">×</button>
+            <h2 style="text-align:center; color:#333; margin-top:0; border-bottom:2px solid #eee; padding-bottom:10px;">
+                📖
+                Ship Eigo の遊び方</h2>
+
+            <div style="margin-top:20px; line-height:1.6; color:#444;">
+                <h3 style="color:#007bff; margin-bottom:10px;">🎯 ゲームの目的</h3>
+                <p>ベルトコンベアに乗って流れてくる段ボールに書かれた英単語をタイピングして、制限時間内に出荷しよう！</p>
+
+                <h3 style="color:#28a745; margin-bottom:10px;">🎮 操作方法</h3>
+                <ul style="padding-left:20px;">
+                    <li>画面に表示されるローマ字をキーボードで入力してください。</li>
+                    <li>入力が完了すると自動的に出荷されます（Enterキーは不要です）。</li>
+                    <li>「ん」は <code>nn</code> または <code>n</code>（次が子音の場合）で入力可能です。</li>
+                </ul>
+
+                <h3 style="color:#dc3545; margin-bottom:10px;">⚠️ 注意点</h3>
+                <ul style="padding-left:20px;">
+                    <li>タイプミスをしたり、段ボールが画面外に流れてしまうと「失敗」になります。</li>
+                    <li>失敗するとコンボが途切れてしまいます。</li>
+                </ul>
+
+                <h3 style="color:#fd7e14; margin-bottom:10px;">🛠️ その他の機能</h3>
+                <ul style="padding-left:20px;">
+                    <li><strong>暗記モード:</strong> 時間経過で日本語が消える高難易度モードです。</li>
+                    <li><strong>金フレ730:</strong> 「出る単特急 金のフレーズ」のスコア730レベル300語を収録。TOEIC対策に最適！</li>
+                    <li><strong>カスタム単語:</strong> 📝カスタムを選択すると、自分で登録した単語で遊べます。</li>
+                    <li><strong>スピード調整:</strong> 自分に合った速度で練習できます。</li>
+                </ul>
+            </div>
+
+            <div style="text-align:center; margin-top:30px;">
+                <button onclick="closeHelpModal()"
+                    style="background:#007bff; color:white; border:none; padding:10px 30px; border-radius:30px; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 10px rgba(0,123,255,0.3);">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- マイ単語リストモーダル -->
+    <div id="mylist-modal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:1000;">
+        <div
+            style="background:white; padding:25px; border-radius:15px; max-width:600px; width:90%; height:80%; display:flex; flex-direction:column; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 10px 0; color:#333; text-align:center;">📖 マイ単語リスト</h3>
+            <div style="font-size:0.85rem; color:#666; text-align:center; margin-bottom:10px;">
+                気になる単語を登録して、自分だけのリストを作ろう！
+            </div>
+            <div id="mylist-container"
+                style="flex:1; overflow-y:auto; margin-bottom:15px; border:1px solid #eee; border-radius:8px; padding:5px; background: #f9f9f9;">
+                <!-- JS生成 -->
+            </div>
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                <button onclick="startMyListGame()"
+                    style="padding:12px 25px; background:var(--success-color); color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; font-weight:bold; box-shadow: 0 3px 5px rgba(0,0,0,0.2);">🎮
+                    このリストで遊ぶ</button>
+                <button onclick="closeMyListModal()"
+                    style="padding:10px 25px; background:#6c757d; color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; font-weight:bold;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知コンテナ -->
+    <div id="toast-container"></div>
+
+    <!-- 外部単語リストの読み込み -->
+    <script src="wordList.js"></script>
+
+    <script>
+        // ===== 柔軟ローマ字変換テーブル =====
+        const kanaMap = {
+            'あ': ['a'], 'い': ['i'], 'う': ['u'], 'え': ['e'], 'お': ['o'],
+            'か': ['ka', 'ca'], 'き': ['ki'], 'く': ['ku', 'cu', 'qu'], 'け': ['ke'], 'こ': ['ko', 'co'],
+            'きゃ': ['kya'], 'きゅ': ['kyu'], 'きょ': ['kyo'],
+            'さ': ['sa'], 'し': ['si', 'shi', 'ci'], 'す': ['su'], 'せ': ['se', 'ce'], 'そ': ['so'],
+            'しゃ': ['sya', 'sha'], 'しゅ': ['syu', 'shu'], 'しょ': ['syo', 'sho'], 'しぇ': ['sye', 'she'],
+            'た': ['ta'], 'ち': ['ti', 'chi'], 'つ': ['tu', 'tsu'], 'て': ['te'], 'と': ['to'],
+            'ちゃ': ['tya', 'cha', 'cya'], 'ちゅ': ['tyu', 'chu', 'cyu'], 'ちょ': ['tyo', 'cho', 'cyo'],
+            'な': ['na'], 'に': ['ni'], 'ぬ': ['nu'], 'ね': ['ne'], 'の': ['no'],
+            'にゃ': ['nya'], 'にゅ': ['nyu'], 'にょ': ['nyo'],
+            'は': ['ha'], 'ひ': ['hi'], 'ふ': ['hu', 'fu'], 'へ': ['he'], 'ほ': ['ho'],
+            'ひゃ': ['hya'], 'ひゅ': ['hyu'], 'ひょ': ['hyo'],
+            'ま': ['ma'], 'み': ['mi'], 'む': ['mu'], 'め': ['me'], 'も': ['mo'],
+            'みゃ': ['mya'], 'みゅ': ['myu'], 'みょ': ['myo'],
+            'や': ['ya'], 'ゆ': ['yu'], 'よ': ['yo'],
+            'ら': ['ra', 'la'], 'り': ['ri', 'li'], 'る': ['ru', 'lu'], 'れ': ['re', 'le'], 'ろ': ['ro', 'lo'],
+            'りゃ': ['rya', 'lya'], 'りゅ': ['ryu', 'lyu'], 'りょ': ['ryo', 'lyo'],
+            'わ': ['wa'], 'を': ['wo'], 'ん': ['nn'],
+            'が': ['ga'], 'ぎ': ['gi'], 'ぐ': ['gu'], 'げ': ['ge'], 'ご': ['go'],
+            'ぎゃ': ['gya'], 'ぎゅ': ['gyu'], 'ぎょ': ['gyo'],
+            'ざ': ['za'], 'じ': ['zi', 'ji'], 'ず': ['zu'], 'ぜ': ['ze'], 'ぞ': ['zo'],
+            'じゃ': ['zya', 'ja', 'jya'], 'じゅ': ['zyu', 'ju', 'jyu'], 'じょ': ['zyo', 'jo', 'jyo'],
+            'だ': ['da'], 'ぢ': ['di'], 'づ': ['du', 'dzu'], 'で': ['de'], 'ど': ['do'],
+            'ば': ['ba'], 'び': ['bi'], 'ぶ': ['bu'], 'べ': ['be'], 'ぼ': ['bo'],
+            'びゃ': ['bya'], 'びゅ': ['byu'], 'びょ': ['byo'],
+            'ぱ': ['pa'], 'ぴ': ['pi'], 'ぷ': ['pu'], 'ぺ': ['pe'], 'ぽ': ['po'],
+            'ぴゃ': ['pya'], 'ぴゅ': ['pyu'], 'ぴょ': ['pyo'],
+            'ぁ': ['xa', 'la'], 'ぃ': ['xi', 'li'], 'ぅ': ['xu', 'lu'], 'ぇ': ['xe', 'le'], 'ぉ': ['xo', 'lo'],
+            'ゃ': ['xya', 'lya'], 'ゅ': ['xyu', 'lyu'], 'ょ': ['xyo', 'lyo'],
+            'っ': ['xtu', 'ltu', 'xtsu', 'ltsu'],
+            'ー': ['-'],
+            'うぇ': ['we', 'uxe', 'ule'],
+            'てぃ': ['thi', 'txi', 'tli', 'texi', 'teli'],
+            'すぽ': ['supo'], 'ぽー': ['po-']
+        };
+
+        // ===== ひらがな解析 =====
+        function parseHiragana(hiragana) {
+            const chunks = [];
+            let i = 0;
+            while (i < hiragana.length) {
+                // 促音（っ）の処理
+                if (hiragana[i] === 'っ' && i + 1 < hiragana.length) {
+                    let nextKana = hiragana[i + 1];
+                    if (i + 2 < hiragana.length && kanaMap[hiragana.substring(i + 1, i + 3)]) {
+                        nextKana = hiragana.substring(i + 1, i + 3);
+                    }
+                    const nextPatterns = kanaMap[nextKana] || [nextKana];
+                    const sokuonPatterns = nextPatterns.map(p => p[0]);
+                    chunks.push({ kana: 'っ', patterns: [...new Set([...sokuonPatterns, 'xtu', 'ltu', 'xtsu', 'ltsu'])], isSokuon: true });
+                    i++;
+                    continue;
+                }
+                // 2文字（拗音など）を先にチェック
+                if (i + 1 < hiragana.length) {
+                    const twoChars = hiragana.substring(i, i + 2);
+                    if (kanaMap[twoChars]) {
+                        chunks.push({ kana: twoChars, patterns: kanaMap[twoChars] });
+                        i += 2;
+                        continue;
+                    }
+                }
+                // 1文字処理
+                const oneChar = hiragana[i];
+                if (kanaMap[oneChar]) {
+                    chunks.push({ kana: oneChar, patterns: kanaMap[oneChar] });
+                } else {
+                    chunks.push({ kana: oneChar, patterns: [oneChar.toLowerCase()] });
+                }
+                i++;
+            }
+            return chunks;
+        }
+
+        // ===== タイピング状態クラス =====
+        class TypingState {
+            constructor(targetStr, isEnglishMode = false) {
+                this.isEnglishMode = isEnglishMode;
+                if (isEnglishMode) {
+                    // 英単語モード
+                    this.chunks = targetStr.split('').map(char => ({
+                        kana: char,
+                        patterns: [char.toLowerCase()]
+                    }));
+                } else {
+                    // 和訳モード
+                    this.chunks = parseHiragana(targetStr);
+                }
+                this.chunkIndex = 0;
+                this.completedRomaji = '';
+                this.currentInput = '';
+                this.pendingPatterns = [];
+                this.updatePendingPatterns();
+            }
+            updatePendingPatterns() {
+                if (this.chunkIndex >= this.chunks.length) {
+                    this.pendingPatterns = [];
+                    return;
+                }
+                const chunk = this.chunks[this.chunkIndex];
+
+                if (this.isEnglishMode) {
+                    this.pendingPatterns = chunk.patterns;
+                    return;
+                }
+
+                let patterns = [];
+                if (chunk.patterns) patterns = [...chunk.patterns];
+
+                // 「ん」の特殊処理
+                if (chunk.kana === 'ん') {
+                    patterns = ['nn', 'xn'];
+                }
+
+                // 促音の処理
+                if (chunk.isSokuon && this.chunks[this.chunkIndex + 1]) {
+                    const nextPatterns = this.chunks[this.chunkIndex + 1].patterns;
+                    patterns = [...new Set([...nextPatterns.map(p => p[0]), 'xtu', 'ltu', 'xtsu', 'ltsu'])];
+                }
+
+                this.pendingPatterns = patterns;
+            }
+            processInput(char) {
+                const inputChar = char.toLowerCase();
+                const testInput = this.currentInput + inputChar;
+                // 前方一致するパターンをフィルタリング
+                const matchingPatterns = this.pendingPatterns.filter(p => p.startsWith(testInput));
+                if (matchingPatterns.length === 0) {
+                    return { success: false, completed: false };
+                }
+                this.currentInput = testInput;
+                // 完全一致するパターンがあればチャンク完了
+                const exactMatch = matchingPatterns.find(p => p === testInput);
+                if (exactMatch) {
+                    this.completedRomaji += testInput;
+                    this.currentInput = '';
+                    this.chunkIndex++;
+                    this.updatePendingPatterns();
+                    return { success: true, completed: this.chunkIndex >= this.chunks.length };
+                }
+                return { success: true, completed: false };
+            }
+            getDisplayInfo() {
+                const typed = this.completedRomaji;
+                const current = this.currentInput;
+                let remaining = '';
+                if (this.chunkIndex < this.chunks.length) {
+                    const firstPattern = this.pendingPatterns[0] || '';
+                    remaining = firstPattern.substring(this.currentInput.length);
+                    for (let i = this.chunkIndex + 1; i < this.chunks.length; i++) {
+                        const c = this.chunks[i];
+                        if (c.kana === 'ん') remaining += 'nn';
+                        else remaining += c.patterns[0] || '';
+                    }
+                }
+                return { typed, current, remaining };
+            }
+        }
+
+        // ===== 単語データ（jaのみで判定） =====
+        // ===== 単語データ =====
+        // 外部ファイル wordList.js の newWordList を使用
+        const wordData = {
+            1: newWordList
+        };
+
+
+        { en: "mouse", ja: "ねずみ", pos: "名詞" }, { en: "elephant", ja: "ぞう", pos: "名詞" },
+        { en: "snake", ja: "へび", pos: "名詞" },
+        // 食べ物
+        { en: "apple", ja: "りんご", pos: "名詞" }, { en: "orange", ja: "おれんじ", pos: "名詞" },
+        { en: "banana", ja: "ばなな", pos: "名詞" }, { en: "peach", ja: "もも", pos: "名詞" },
+        { en: "grape", ja: "ぶどう", pos: "名詞" }, { en: "egg", ja: "たまご", pos: "名詞" },
+        { en: "milk", ja: "ぎゅうにゅう", pos: "名詞" }, { en: "bread", ja: "ぱん", pos: "名詞" },
+        { en: "rice", ja: "ごはん", pos: "名詞" }, { en: "water", ja: "みず", pos: "名詞" },
+        { en: "juice", ja: "じゅーす", pos: "名詞" }, { en: "cake", ja: "けーき", pos: "名詞" },
+        { en: "meat", ja: "にく", pos: "名詞" }, { en: "fish", ja: "さかな", pos: "名詞" },
+        { en: "tomato", ja: "とまと", pos: "名詞" },
+        // 自然・天気
+        { en: "flower", ja: "はな", pos: "名詞" }, { en: "tree", ja: "き", pos: "名詞" },
+        { en: "sun", ja: "たいよう", pos: "名詞" }, { en: "moon", ja: "つき", pos: "名詞" },
+        { en: "star", ja: "ほし", pos: "名詞" }, { en: "rain", ja: "あめ", pos: "名詞" },
+        { en: "snow", ja: "ゆき", pos: "名詞" }, { en: "sky", ja: "そら", pos: "名詞" },
+        { en: "river", ja: "かわ", pos: "名詞" }, { en: "sea", ja: "うみ", pos: "名詞" },
+        { en: "mountain", ja: "やま", pos: "名詞" }, { en: "wind", ja: "かぜ", pos: "名詞" },
+        // 学校・文房具
+        { en: "school", ja: "がっこう", pos: "名詞" }, { en: "teacher", ja: "せんせい", pos: "名詞" },
+        { en: "student", ja: "せいと", pos: "名詞" }, { en: "pencil", ja: "えんぴつ", pos: "名詞" },
+        { en: "eraser", ja: "けしごむ", pos: "名詞" }, { en: "book", ja: "ほん", pos: "名詞" },
+        { en: "notebook", ja: "のーと", pos: "名詞" }, { en: "desk", ja: "つくえ", pos: "名詞" },
+        { en: "chair", ja: "いす", pos: "名詞" }, { en: "bag", ja: "かばん", pos: "名詞" },
+        // 体・人
+        { en: "head", ja: "あたま", pos: "名詞" }, { en: "hand", ja: "て", pos: "名詞" },
+        { en: "face", ja: "かお", pos: "名詞" }, { en: "eye", ja: "め", pos: "名詞" },
+        { en: "ear", ja: "みみ", pos: "名詞" }, { en: "mouth", ja: "くち", pos: "名詞" },
+        { en: "nose", ja: "はな", pos: "名詞" }, { en: "leg", ja: "あし", pos: "名詞" },
+        { en: "friend", ja: "ともだち", pos: "名詞" }, { en: "mother", ja: "おかあさん", pos: "名詞" },
+        { en: "father", ja: "おとうさん", pos: "名詞" },
+        // 家・生活
+        { en: "house", ja: "いえ", pos: "名詞" }, { en: "room", ja: "へや", pos: "名詞" },
+        { en: "door", ja: "どあ", pos: "名詞" }, { en: "window", ja: "まど", pos: "名詞" },
+        { en: "bed", ja: "べっど", pos: "名詞" }, { en: "bath", ja: "おふろ", pos: "名詞" },
+        { en: "watch", ja: "とけい", pos: "名詞" }, { en: "box", ja: "はこ", pos: "名詞" },
+        { en: "money", ja: "おかね", pos: "名詞" }, { en: "park", ja: "こうえん", pos: "名詞" },
+        // 乗り物
+        { en: "car", ja: "くるま", pos: "名詞" }, { en: "bus", ja: "ばす", pos: "名詞" },
+        { en: "train", ja: "でんしゃ", pos: "名詞" }, { en: "bike", ja: "じてんしゃ", pos: "名詞" },
+        { en: "plane", ja: "ひこうき", pos: "名詞" }, { en: "ship", ja: "ふね", pos: "名詞" },
+        // 色
+        { en: "red", ja: "あか", pos: "形容詞" }, { en: "blue", ja: "あお", pos: "形容詞" },
+        { en: "white", ja: "しろ", pos: "形容詞" }, { en: "black", ja: "くろ", pos: "形容詞" },
+        { en: "yellow", ja: "きいろ", pos: "形容詞" }, { en: "green", ja: "みどり", pos: "形容詞" },
+        // 形容詞
+        { en: "big", ja: "おおきい", pos: "形容詞" }, { en: "small", ja: "ちいさい", pos: "形容詞" },
+        { en: "long", ja: "ながい", pos: "形容詞" }, { en: "short", ja: "みじかい", pos: "形容詞" },
+        { en: "hot", ja: "あつい", pos: "形容詞" }, { en: "cold", ja: "さむい", pos: "形容詞" },
+        { en: "good", ja: "よい", pos: "形容詞" }, { en: "bad", ja: "わるい", pos: "形容詞" },
+        { en: "new", ja: "あたらしい", pos: "形容詞" }, { en: "old", ja: "ふるい", pos: "形容詞" },
+        { en: "happy", ja: "うれしい", pos: "形容詞" }, { en: "sad", ja: "かなしい", pos: "形容詞" },
+        { en: "cute", ja: "かわいい", pos: "形容詞" },
+        // 動詞
+        { en: "run", ja: "はしる", pos: "動詞" }, { en: "walk", ja: "あるく", pos: "動詞" },
+        { en: "eat", ja: "たべる", pos: "動詞" }, { en: "drink", ja: "のむ", pos: "動詞" },
+        { en: "sleep", ja: "ねる", pos: "動詞" }, { en: "wake", ja: "おきる", pos: "動詞" },
+        { en: "look", ja: "みる", pos: "動詞" }, { en: "listen", ja: "きく", pos: "動詞" },
+        { en: "speak", ja: "はなす", pos: "動詞" }, { en: "read", ja: "よむ", pos: "動詞" },
+        { en: "write", ja: "かく", pos: "動詞" }, { en: "go", ja: "いく", pos: "動詞" },
+        { en: "come", ja: "くる", pos: "動詞" }, { en: "play", ja: "あそぶ", pos: "動詞" },
+        { en: "swim", ja: "およぐ", pos: "動詞" }, { en: "study", ja: "べんきょうする", pos: "動詞" },
+        { en: "cook", ja: "りょうりする", pos: "動詞" }, { en: "wash", ja: "あらう", pos: "動詞" },
+        { en: "sing", ja: "うたう", pos: "動詞" }
+            ],
+        2: [
+            // 学校・勉強
+            { en: "library", ja: "としょかん", pos: "名詞" }, { en: "classroom", ja: "きょうしつ", pos: "名詞" },
+            { en: "subject", ja: "かもく", pos: "名詞" }, { en: "math", ja: "すうがく", pos: "名詞" },
+            { en: "science", ja: "りか", pos: "名詞" }, { en: "history", ja: "れきし", pos: "名詞" },
+            { en: "art", ja: "びじゅつ", pos: "名詞" }, { en: "music", ja: "おんがく", pos: "名詞" },
+            { en: "sport", ja: "すぽーつ", pos: "名詞" }, { en: "club", ja: "ぶかつ", pos: "名詞" },
+            { en: "test", ja: "てすと", pos: "名詞" }, { en: "homework", ja: "しゅくだい", pos: "名詞" },
+            { en: "dictionary", ja: "じしょ", pos: "名詞" }, { en: "uniform", ja: "せいふく", pos: "名詞" },
+            { en: "ruler", ja: "じょうぎ", pos: "名詞" },
+            // 時間・頻度
+            { en: "morning", ja: "あさ", pos: "名詞" }, { en: "afternoon", ja: "ごご", pos: "名詞" },
+            { en: "evening", ja: "ゆうがた", pos: "名詞" }, { en: "night", ja: "よる", pos: "名詞" },
+            { en: "today", ja: "きょう", pos: "名詞" }, { en: "yesterday", ja: "きのう", pos: "名詞" },
+            { en: "tomorrow", ja: "あした", pos: "名詞" }, { en: "week", ja: "しゅう", pos: "名詞" },
+            { en: "month", ja: "つき", pos: "名詞" }, { en: "year", ja: "とし", pos: "名詞" },
+            { en: "weekend", ja: "しゅうまつ", pos: "名詞" }, { en: "always", ja: "いつも", pos: "副詞" },
+            { en: "usually", ja: "たいてい", pos: "副詞" }, { en: "often", ja: "よく", pos: "副詞" },
+            { en: "sometimes", ja: "ときどき", pos: "副詞" }, { en: "never", ja: "けっしてない", pos: "副詞" },
+            // 生活・場所
+            { en: "city", ja: "し", pos: "名詞" }, { en: "town", ja: "まち", pos: "名詞" },
+            { en: "country", ja: "くに", pos: "名詞" }, { en: "world", ja: "せかい", pos: "名詞" },
+            { en: "station", ja: "えき", pos: "名詞" }, { en: "hospital", ja: "びょういん", pos: "名詞" },
+            { en: "restaurant", ja: "れすとらん", pos: "名詞" }, { en: "supermarket", ja: "すーぱー", pos: "名詞" },
+            { en: "kitchen", ja: "だいどころ", pos: "名詞" }, { en: "garden", ja: "にわ", pos: "名詞" },
+            { en: "picture", ja: "しゃしん", pos: "名詞" }, { en: "movie", ja: "えいが", pos: "名詞" },
+            { en: "letter", ja: "てがみ", pos: "名詞" }, { en: "gift", ja: "おくりもの", pos: "名詞" },
+            { en: "computer", ja: "こんぴゅーた", pos: "名詞" }, { en: "phone", ja: "でんわ", pos: "名詞" },
+            { en: "email", ja: "めーる", pos: "名詞" }, { en: "dream", ja: "ゆめ", pos: "名詞" },
+            // 食事
+            { en: "breakfast", ja: "ちょうしょく", pos: "名詞" }, { en: "lunch", ja: "ちゅうしょく", pos: "名詞" },
+            { en: "dinner", ja: "ゆうしょく", pos: "名詞" }, { en: "vegetable", ja: "やさい", pos: "名詞" },
+            { en: "fruit", ja: "くだもの", pos: "名詞" }, { en: "sugar", ja: "さとう", pos: "名詞" },
+            { en: "salt", ja: "しお", pos: "名詞" },
+            // 動詞
+            { en: "meet", ja: "あう", pos: "動詞" }, { en: "talk", ja: "はなす", pos: "動詞" },
+            { en: "ask", ja: "たずねる", pos: "動詞" }, { en: "answer", ja: "こたえる", pos: "動詞" },
+            { en: "help", ja: "たすける", pos: "動詞" }, { en: "start", ja: "はじめる", pos: "動詞" },
+            { en: "finish", ja: "おわる", pos: "動詞" }, { en: "buy", ja: "かう", pos: "動詞" },
+            { en: "sell", ja: "うる", pos: "動詞" }, { en: "give", ja: "あげる", pos: "動詞" },
+            { en: "get", ja: "える", pos: "動詞" }, { en: "take", ja: "とる", pos: "動詞" },
+            { en: "bring", ja: "もってくる", pos: "動詞" }, { en: "show", ja: "みせる", pos: "動詞" },
+            { en: "teach", ja: "おしえる", pos: "動詞" }, { en: "learn", ja: "まなぶ", pos: "動詞" },
+            { en: "practice", ja: "れんしゅうする", pos: "動詞" }, { en: "think", ja: "かんがえる", pos: "動詞" },
+            { en: "know", ja: "しっている", pos: "動詞" }, { en: "understand", ja: "りかいする", pos: "動詞" },
+            { en: "remember", ja: "おぼえている", pos: "動詞" }, { en: "forget", ja: "わすれる", pos: "動詞" },
+            { en: "enjoy", ja: "たのしむ", pos: "動詞" }, { en: "try", ja: "こころみる", pos: "動詞" },
+            { en: "use", ja: "つかう", pos: "動詞" }, { en: "make", ja: "つくる", pos: "動詞" },
+            { en: "clean", ja: "そうじする", pos: "動詞" }, { en: "wash", ja: "あらう", pos: "動詞" },
+            { en: "live", ja: "すむ", pos: "動詞" }, { en: "stay", ja: "たいざいする", pos: "動詞" },
+            { en: "visit", ja: "ほうもんする", pos: "動詞" }, { en: "travel", ja: "りょこうする", pos: "動詞" },
+            { en: "work", ja: "はたらく", pos: "動詞" }, { en: "wait", ja: "まつ", pos: "動詞" },
+            // 形容詞
+            { en: "beautiful", ja: "うつくしい", pos: "形容詞" }, { en: "pretty", ja: "かわいい", pos: "形容詞" },
+            { en: "cool", ja: "かっこいい", pos: "形容詞" }, { en: "kind", ja: "しんせつな", pos: "形容詞" },
+            { en: "busy", ja: "いそがしい", pos: "形容詞" }, { en: "free", ja: "ひまな", pos: "形容詞" },
+            { en: "tired", ja: "つかれた", pos: "形容詞" }, { en: "hungry", ja: "おなかがすいた", pos: "形容詞" },
+            { en: "full", ja: "おなかがいっぱい", pos: "形容詞" }, { en: "thirsty", ja: "のどがかわいた", pos: "形容詞" },
+            { en: "easy", ja: "かんたんな", pos: "形容詞" }, { en: "hard", ja: "むずかしい", pos: "形容詞" },
+            { en: "interesting", ja: "おもしろい", pos: "形容詞" }, { en: "exciting", ja: "わくわくする", pos: "形容詞" },
+            { en: "boring", ja: "つまらない", pos: "形容詞" }, { en: "strong", ja: "つよい", pos: "形容詞" },
+            { en: "weak", ja: "よわい", pos: "形容詞" }, { en: "high", ja: "たかい", pos: "形容詞" },
+            { en: "low", ja: "ひくい", pos: "形容詞" }, { en: "fast", ja: "はやい", pos: "形容詞" },
+            { en: "slow", ja: "おそい", pos: "形容詞" }, { en: "young", ja: "わかい", pos: "形容詞" },
+            { en: "popular", ja: "にんきのある", pos: "形容詞" }, { en: "famous", ja: "ゆうめいな", pos: "形容詞" },
+            { en: "important", ja: "じゅうような", pos: "形容詞" }
+        ],
+            3: [
+                // 社会・経済
+                { en: "government", ja: "せいふ", pos: "名詞" }, { en: "economy", ja: "けいざい", pos: "名詞" },
+                { en: "society", ja: "しゃかい", pos: "名詞" }, { en: "culture", ja: "ぶんか", pos: "名詞" },
+                { en: "industry", ja: "さんぎょう", pos: "名詞" }, { en: "company", ja: "かいしゃ", pos: "名詞" },
+                { en: "product", ja: "せいひん", pos: "名詞" }, { en: "price", ja: "かかく", pos: "名詞" },
+                { en: "law", ja: "ほうりつ", pos: "名詞" }, { en: "crime", ja: "はんざい", pos: "名詞" },
+                { en: "war", ja: "せんそう", pos: "名詞" }, { en: "peace", ja: "へいわ", pos: "名詞" },
+                { en: "citizen", ja: "しみん", pos: "名詞" }, { en: "community", ja: "ちいきしゃかい", pos: "名詞" },
+                { en: "tradition", ja: "でんとう", pos: "名詞" },
+                // 環境・科学
+                { en: "environment", ja: "かんきょう", pos: "名詞" }, { en: "nature", ja: "しぜん", pos: "名詞" },
+                { en: "planet", ja: "わくせい", pos: "名詞" }, { en: "plant", ja: "しょくぶつ", pos: "名詞" },
+                { en: "earth", ja: "ちきゅう", pos: "名詞" }, { en: "resource", ja: "しげん", pos: "名詞" },
+                { en: "pollution", ja: "おせん", pos: "名詞" }, { en: "damage", ja: "ひがい", pos: "名詞" },
+                { en: "energy", ja: "えねるぎー", pos: "名詞" }, { en: "technology", ja: "ぎじゅつ", pos: "名詞" },
+                { en: "science", ja: "かがく", pos: "名詞" }, { en: "research", ja: "けんきゅう", pos: "名詞" },
+                { en: "experiment", ja: "じっけん", pos: "名詞" }, { en: "data", ja: "でーた", pos: "名詞" },
+                { en: "internet", ja: "いんたーねっと", pos: "名詞" },
+                // 抽象概念・考え
+                { en: "idea", ja: "かんがえ", pos: "名詞" }, { en: "opinion", ja: "いけん", pos: "名詞" },
+                { en: "reason", ja: "りゆう", pos: "名詞" }, { en: "problem", ja: "もんだい", pos: "名詞" },
+                { en: "result", ja: "けっか", pos: "名詞" }, { en: "advice", ja: "じょげん", pos: "名詞" },
+                { en: "information", ja: "じょうほう", pos: "名詞" }, { en: "experience", ja: "けいけん", pos: "名詞" },
+                { en: "health", ja: "けんこう", pos: "名詞" }, { en: "education", ja: "きょういく", pos: "名詞" },
+                { en: "knowledge", ja: "ちしき", pos: "名詞" }, { en: "memory", ja: "きおく", pos: "名詞" },
+                { en: "habit", ja: "しゅうかん", pos: "名詞" }, { en: "effort", ja: "どりょく", pos: "名詞" },
+                { en: "ability", ja: "のうりょく", pos: "名詞" },
+                // 動詞（発展的）
+                { en: "decide", ja: "きめる", pos: "動詞" }, { en: "agree", ja: "どういする", pos: "動詞" },
+                { en: "suggest", ja: "ていあんする", pos: "動詞" }, { en: "recommend", ja: "すすめる", pos: "動詞" },
+                { en: "explain", ja: "せつめいする", pos: "動詞" }, { en: "describe", ja: "びょうしゃする", pos: "動詞" },
+                { en: "improve", ja: "かいぜんする", pos: "動詞" }, { en: "develop", ja: "かいはつする", pos: "動詞" },
+                { en: "produce", ja: "せいさんする", pos: "動詞" }, { en: "create", ja: "そうぞうする", pos: "動詞" },
+                { en: "discover", ja: "はっけんする", pos: "動詞" }, { en: "protect", ja: "まもる", pos: "動詞" },
+                { en: "save", ja: "すくう", pos: "動詞" }, { en: "waste", ja: "むだにする", pos: "動詞" },
+                { en: "share", ja: "きょうゆうする", pos: "動詞" }, { en: "support", ja: "しじする", pos: "動詞" },
+                { en: "prepare", ja: "じゅんびする", pos: "動詞" }, { en: "continue", ja: "つづける", pos: "動詞" },
+                { en: "include", ja: "ふくむ", pos: "動詞" }, { en: "allow", ja: "ゆるす", pos: "動詞" },
+                { en: "expect", ja: "きたいする", pos: "動詞" }, { en: "realize", ja: "きづく", pos: "動詞" },
+                { en: "believe", ja: "しんじる", pos: "動詞" }, { en: "worry", ja: "しんぱいする", pos: "動詞" },
+                { en: "happen", ja: "おこる", pos: "動詞" },
+                // 形容詞（状況・性質）
+                { en: "different", ja: "ちがった", pos: "形容詞" }, { en: "similar", ja: "にている", pos: "形容詞" },
+                { en: "various", ja: "さまざまな", pos: "形容詞" }, { en: "common", ja: "きょうつうの", pos: "形容詞" },
+                { en: "normal", ja: "ふつうの", pos: "形容詞" }, { en: "strange", ja: "きみょうな", pos: "形容詞" },
+                { en: "dangerous", ja: "きけんな", pos: "形容詞" }, { en: "safe", ja: "あんぜんな", pos: "形容詞" },
+                { en: "possible", ja: "かのうな", pos: "形容詞" }, { en: "impossible", ja: "ふかのうな", pos: "形容詞" },
+                { en: "necessary", ja: "ひつような", pos: "形容詞" }, { en: "traditional", ja: "でんとうてきな", pos: "形容詞" },
+                { en: "modern", ja: "げんだいてきな", pos: "形容詞" }, { en: "international", ja: "こくさいてきな", pos: "形容詞" },
+                { en: "local", ja: "じもとの", pos: "形容詞" }, { en: "foreign", ja: "がいこくの", pos: "形容詞" },
+                { en: "useful", ja: "やくにたつ", pos: "形容詞" }, { en: "correct", ja: "ただしい", pos: "形容詞" },
+                { en: "wrong", ja: "まちがった", pos: "形容詞" }, { en: "serious", ja: "しんけんな", pos: "形容詞" },
+                // 副詞
+                { en: "recently", ja: "さいきん", pos: "副詞" }, { en: "already", ja: "すでに", pos: "副詞" },
+                { en: "yet", ja: "まだ", pos: "副詞" }, { en: "actually", ja: "じつは", pos: "副詞" },
+                { en: "especially", ja: "とくに", pos: "副詞" }, { en: "finally", ja: "ついに", pos: "副詞" }
+            ],
+                4: [
+                    { en: "hypothesis", ja: "かせつ", pos: "名詞" }, { en: "molecule", ja: "ぶんし", pos: "名詞" },
+                    { en: "quantum", ja: "りょうし", pos: "名詞" }, { en: "structure", ja: "こうぞう", pos: "名詞" },
+                    { en: "analysis", ja: "ぶんせき", pos: "名詞" },
+                    { en: "philosophy", ja: "てつがく", pos: "名詞" }, { en: "psychology", ja: "しんりがく", pos: "名詞" },
+                    { en: "economy", ja: "けいざい", pos: "名詞" }, { en: "politics", ja: "せいじ", pos: "名詞" },
+                    { en: "literature", ja: "ぶんがく", pos: "名詞" }, { en: "biology", ja: "せいぶつがく", pos: "名詞" },
+                    { en: "chemistry", ja: "かがく", pos: "名詞" }, { en: "physics", ja: "ぶつりがく", pos: "名詞" },
+                    { en: "sociology", ja: "しゃかいがく", pos: "名詞" }, { en: "anthropology", ja: "じんるいがく", pos: "名詞" },
+                    { en: "architecture", ja: "けんちく", pos: "名詞" }, { en: "agriculture", ja: "のうぎょう", pos: "名詞" },
+                    { en: "engineering", ja: "こうがく", pos: "名詞" }, { en: "medicine", ja: "いがく", pos: "名詞" },
+                    { en: "law", ja: "ほうりつ", pos: "名詞" }, { en: "education", ja: "きょういく", pos: "名詞" },
+                    { en: "religion", ja: "しゅうきょう", pos: "名詞" }, { en: "history", ja: "れきし", pos: "名詞" },
+                    { en: "geography", ja: "ちりがく", pos: "名詞" }, { en: "linguistics", ja: "げんごがく", pos: "名詞" },
+                    { en: "democracy", ja: "みんしゅしゅぎ", pos: "名詞" }, { en: "capitalism", ja: "しほんしゅぎ", pos: "名詞" },
+                    { en: "socialism", ja: "しゃかいしゅぎ", pos: "名詞" }, { en: "liberty", ja: "じゆう", pos: "名詞" },
+                    { en: "equality", ja: "びょうどう", pos: "名詞" }, { en: "justice", ja: "せいぎ", pos: "名詞" },
+                    { en: "peace", ja: "へいわ", pos: "名詞" }, { en: "war", ja: "せんそう", pos: "名詞" },
+                    { en: "population", ja: "じんこう", pos: "名詞" }, { en: "pollution", ja: "おせん", pos: "名詞" },
+                    { en: "poverty", ja: "ひんこん", pos: "名詞" }, { en: "virus", ja: "ういるす", pos: "名詞" },
+                    { en: "vaccine", ja: "わくちん", pos: "名詞" }, { en: "immunity", ja: "めんえき", pos: "名詞" },
+                    { en: "genetics", ja: "いでんがく", pos: "名詞" }, { en: "evolution", ja: "しんか", pos: "名詞" },
+                    { en: "species", ja: "しゅ", pos: "名詞" }, { en: "ecosystem", ja: "せいたいけい", pos: "名詞" },
+                    { en: "atmosphere", ja: "たいき", pos: "名詞" }, { en: "gravity", ja: "じゅうりょく", pos: "名詞" },
+                    { en: "radiation", ja: "ほうしゃせん", pos: "名詞" }, { en: "satellite", ja: "えいせい", pos: "名詞" },
+                    { en: "galaxy", ja: "ぎんが", pos: "名詞" }, { en: "universe", ja: "うちゅう", pos: "名詞" },
+                    { en: "software", ja: "そふとうぇあ", pos: "名詞" }, { en: "network", ja: "ねっとわーく", pos: "名詞" },
+                    { en: "database", ja: "でーたべーす", pos: "名詞" }, { en: "algorithm", ja: "あるごりずむ", pos: "名詞" },
+                    { en: "security", ja: "せきゅりてぃ", pos: "名詞" }, { en: "privacy", ja: "ぷらいばしー", pos: "名詞" },
+                    { en: "innovation", ja: "かくしん", pos: "名詞" }, { en: "strategy", ja: "せんりゃく", pos: "名詞" },
+                    { en: "management", ja: "けいえい", pos: "名詞" }, { en: "marketing", ja: "まーけてぃんぐ", pos: "名詞" },
+                    { en: "finance", ja: "ざいむ", pos: "名詞" }, { en: "investment", ja: "とうし", pos: "名詞" },
+                    { en: "profit", ja: "りえき", pos: "名詞" }, { en: "revenue", ja: "しゅうにゅう", pos: "名詞" },
+                    { en: "consumer", ja: "しょうひしゃ", pos: "名詞" }, { en: "demand", ja: "じゅよう", pos: "名詞" },
+                    { en: "supply", ja: "きょうきゅう", pos: "名詞" }, { en: "inflation", ja: "いんふれ", pos: "名詞" },
+                    { en: "recession", ja: "ふきょう", pos: "名詞" }, { en: "negotiation", ja: "こうしょう", pos: "名詞" },
+                    { en: "conference", ja: "かいぎ", pos: "名詞" }, { en: "presentation", ja: "はっぴょう", pos: "名詞" },
+                    { en: "theory", ja: "りろん", pos: "名詞" }, { en: "method", ja: "ほうほう", pos: "名詞" },
+                    { en: "data", ja: "でーた", pos: "名詞" }, { en: "evidence", ja: "しょうこ", pos: "名詞" },
+                    { en: "conclusion", ja: "けつろん", pos: "名詞" }, { en: "argument", ja: "ぎろん", pos: "名詞" },
+                    { en: "definition", ja: "ていぎ", pos: "名詞" }, { en: "context", ja: "ぶんみゃく", pos: "名詞" },
+                    { en: "concept", ja: "がいねん", pos: "名詞" }, { en: "principle", ja: "げんり", pos: "名詞" },
+                    { en: "factor", ja: "よういん", pos: "名詞" }, { en: "perspective", ja: "かんてん", pos: "名詞" },
+                    { en: "objective", ja: "もくひょう", pos: "名詞" },
+                    { en: "subjective", ja: "しゅかんてき", pos: "形容詞" }, { en: "potential", ja: "せんざいてき", pos: "形容詞" },
+                    { en: "significant", ja: "じゅうような", pos: "形容詞" }, { en: "efficient", ja: "こうりつてき", pos: "形容詞" },
+                    { en: "effective", ja: "こうかてき", pos: "形容詞" }, { en: "sustainable", ja: "じぞくかのう", pos: "形容詞" },
+                    { en: "global", ja: "せかいてき", pos: "形容詞" }, { en: "local", ja: "ちいきの", pos: "形容詞" },
+                    { en: "urban", ja: "とかいの", pos: "形容詞" }, { en: "rural", ja: "いなかの", pos: "形容詞" },
+                    { en: "public", ja: "こうきょうの", pos: "形容詞" }, { en: "private", ja: "しゆうの", pos: "形容詞" },
+                    { en: "official", ja: "こうしきの", pos: "形容詞" }, { en: "legal", ja: "ほうてきな", pos: "形容詞" },
+                    { en: "illegal", ja: "いほうな", pos: "形容詞" }, { en: "ethical", ja: "りんりてき", pos: "形容詞" },
+                    { en: "moral", ja: "どうとくてき", pos: "形容詞" }, { en: "cultural", ja: "ぶんかてき", pos: "形容詞" },
+                    { en: "social", ja: "しゃかいてき", pos: "形容詞" }, { en: "physical", ja: "しんたいてき", pos: "形容詞" },
+                    { en: "mental", ja: "せいしんてき", pos: "形容詞" }, { en: "emotional", ja: "かんじょうの", pos: "形容詞" },
+                    { en: "intellectual", ja: "ちてきな", pos: "形容詞" }, { en: "creative", ja: "そうぞうてき", pos: "形容詞" },
+                    { en: "academic", ja: "がくじゅつてき", pos: "形容詞" }, { en: "scientific", ja: "かがくてき", pos: "形容詞" }
+                ],
+                    5: [
+                        // 旅行・移動
+                        { en: "passport", ja: "ぱすぽーと", pos: "名詞" }, { en: "ticket", ja: "ちけっと", pos: "名詞" },
+                        { en: "reservation", ja: "よやく", pos: "名詞" }, { en: "airport", ja: "くうこう", pos: "名詞" },
+                        { en: "flight", ja: "びん", pos: "名詞" }, { en: "gate", ja: "とうじょうぐち", pos: "名詞" },
+                        { en: "seat", ja: "ざせき", pos: "名詞" }, { en: "luggage", ja: "にもつ", pos: "名詞" },
+                        { en: "hotel", ja: "ほてる", pos: "名詞" }, { en: "reception", ja: "うけつけ", pos: "名詞" },
+                        { en: "key", ja: "かぎ", pos: "名詞" }, { en: "map", ja: "ちず", pos: "名詞" },
+                        { en: "guidebook", ja: "がいどぶっく", pos: "名詞" }, { en: "subway", ja: "ちかてつ", pos: "名詞" },
+                        { en: "taxi", ja: "たくしー", pos: "名詞" }, { en: "fare", ja: "うんちん", pos: "名詞" },
+                        { en: "platform", ja: "ほーむ", pos: "名詞" }, { en: "souvenir", ja: "おみやげ", pos: "名詞" },
+                        { en: "sightseeing", ja: "かんこう", pos: "名詞" },
+                        // 食事・レストラン
+                        { en: "restaurant", ja: "れすとらん", pos: "名詞" }, { en: "menu", ja: "めにゅー", pos: "名詞" },
+                        { en: "order", ja: "ちゅうもん", pos: "名詞" }, { en: "water", ja: "みず", pos: "名詞" },
+                        { en: "napkin", ja: "なぷきん", pos: "名詞" }, { en: "cheers", ja: "かんぱい", pos: "名詞" },
+                        { en: "delicious", ja: "おいしい", pos: "形容詞" }, { en: "spicy", ja: "からい", pos: "形容詞" },
+                        { en: "sweet", ja: "あまい", pos: "形容詞" }, { en: "sour", ja: "すっぱい", pos: "形容詞" },
+                        { en: "bitter", ja: "にがい", pos: "形容詞" }, { en: "bill", ja: "おかいけい", pos: "名詞" },
+                        { en: "receipt", ja: "れしーと", pos: "名詞" }, { en: "recommend", ja: "おすすめする", pos: "動詞" },
+                        // 買い物・お金
+                        { en: "wallet", ja: "さいふ", pos: "名詞" }, { en: "cash", ja: "げんきん", pos: "名詞" },
+                        { en: "change", ja: "おつり", pos: "名詞" }, { en: "creditcard", ja: "くれじっとかーど", pos: "名詞" },
+                        { en: "price", ja: "ねだん", pos: "名詞" }, { en: "tax", ja: "ぜいきん", pos: "名詞" },
+                        { en: "discount", ja: "わりびき", pos: "名詞" }, { en: "sale", ja: "とくばい", pos: "名詞" },
+                        { en: "expensive", ja: "たかい", pos: "形容詞" }, { en: "cheap", ja: "やすい", pos: "形容詞" },
+                        { en: "bag", ja: "ふくろ", pos: "名詞" }, { en: "size", ja: "さいず", pos: "名詞" },
+                        // 日常生活・家事
+                        { en: "garbage", ja: "ごみ", pos: "名詞" }, { en: "laundry", ja: "せんたく", pos: "名詞" },
+                        { en: "cleaning", ja: "そうじ", pos: "名詞" }, { en: "grocery", ja: "しょくりょうひん", pos: "名詞" },
+                        { en: "appointment", ja: "よやく", pos: "名詞" }, { en: "traffic", ja: "こうつう", pos: "名詞" },
+                        { en: "weather", ja: "てんき", pos: "名詞" }, { en: "umbrella", ja: "かさ", pos: "名詞" },
+                        { en: "clothes", ja: "ふく", pos: "名詞" }, { en: "shoes", ja: "くつ", pos: "名詞" },
+                        { en: "glasses", ja: "めがね", pos: "名詞" }, { en: "medicine", ja: "くすり", pos: "名詞" },
+                        // コミュニケーション・動作
+                        { en: "hello", ja: "こんにちは", pos: "名詞" }, { en: "thanks", ja: "ありがとう", pos: "名詞" },
+                        { en: "sorry", ja: "ごめんなさい", pos: "形容詞" }, { en: "please", ja: "おねがいします", pos: "副詞" },
+                        { en: "welcome", ja: "ようこそ", pos: "名詞" }, { en: "invite", ja: "しょうたいする", pos: "動詞" },
+                        { en: "promise", ja: "やくそくする", pos: "動詞" }, { en: "cancel", ja: "きゃんせるする", pos: "動詞" },
+                        { en: "check", ja: "かくにんする", pos: "動詞" }, { en: "pay", ja: "はらう", pos: "動詞" },
+                        { en: "cost", ja: "かかる", pos: "動詞" }, { en: "borrow", ja: "かりる", pos: "動詞" },
+                        { en: "lend", ja: "かす", pos: "動詞" }, { en: "fix", ja: "なおす", pos: "動詞" },
+                        { en: "search", ja: "さがす", pos: "動詞" }, { en: "hurry", ja: "いそぐ", pos: "動詞" },
+                        { en: "relax", ja: "くつろぐ", pos: "動詞" }, { en: "lose", ja: "なくす", pos: "動詞" },
+                        { en: "forget", ja: "わすれる", pos: "動詞" },
+                        // 形容詞・状態
+                        { en: "busy", ja: "いそがしい", pos: "形容詞" }, { en: "crowded", ja: "こんでいる", pos: "形容詞" },
+                        { en: "open", ja: "あいている", pos: "形容詞" }, { en: "closed", ja: "しまっている", pos: "形容詞" },
+                        { en: "near", ja: "ちかい", pos: "形容詞" }, { en: "far", ja: "とおい", pos: "形容詞" },
+                        { en: "convenient", ja: "べんりな", pos: "形容詞" }, { en: "noisy", ja: "うるさい", pos: "形容詞" },
+                        { en: "quiet", ja: "しずかな", pos: "形容詞" }, { en: "clean", ja: "きれいな", pos: "形容詞" },
+                        { en: "dirty", ja: "きたない", pos: "形容詞" }, { en: "heavy", ja: "おもい", pos: "形容詞" },
+                        { en: "light", ja: "かるい", pos: "形容詞" }, { en: "happy", ja: "しあわせな", pos: "形容詞" },
+                        { en: "sad", ja: "かなしい", pos: "形容詞" }, { en: "funny", ja: "おもしろい", pos: "形容詞" },
+                        { en: "sleepy", ja: "ねむい", pos: "形容詞" }, { en: "hungry", ja: "おなかがすいた", pos: "形容詞" },
+                        // 副詞・その他
+                        { en: "maybe", ja: "たぶん", pos: "副詞" }, { en: "really", ja: "ほんとうに", pos: "副詞" },
+                        { en: "very", ja: "とても", pos: "副詞" }, { en: "soon", ja: "すぐに", pos: "副詞" },
+                        { en: "later", ja: "あとで", pos: "副詞" }, { en: "now", ja: "いま", pos: "副詞" },
+                        { en: "together", ja: "いっしょに", pos: "副詞" }, { en: "alone", ja: "ひとりで", pos: "副詞" }
+                    ],
+                        // TOEIC 700点レベル（300語）- 外部ファイル wordList.js から読み込み
+                        6: wordListLevel6,
+                            7: [
+                                // TOEIC 800点レベル (449語)
+                                { en: "accommodate", ja: "しゅうようする", pos: "動詞" }, { en: "agenda", ja: "ぎだい", pos: "名詞" },
+                                { en: "alter", ja: "かえる", pos: "動詞" }, { en: "alternative", ja: "だいたいあん", pos: "名詞" },
+                                { en: "ambitious", ja: "やしんてきな", pos: "形容詞" }, { en: "analyze", ja: "ぶんせきする", pos: "動詞" },
+                                { en: "annual", ja: "ねんいちかいの", pos: "形容詞" }, { en: "applicant", ja: "おうぼしゃ", pos: "名詞" },
+                                { en: "appoint", ja: "にんめいする", pos: "動詞" }, { en: "appraisal", ja: "さてい", pos: "名詞" },
+                                { en: "appreciate", ja: "かんしゃする", pos: "動詞" }, { en: "approve", ja: "しょうにんする", pos: "動詞" },
+                                { en: "approximate", ja: "おおよその", pos: "形容詞" }, { en: "architect", ja: "けんちくか", pos: "名詞" },
+                                { en: "aspect", ja: "きょくめん", pos: "名詞" }, { en: "asset", ja: "しさん", pos: "名詞" },
+                                { en: "assignment", ja: "かだい", pos: "名詞" }, { en: "associate", ja: "かんれんづける", pos: "動詞" },
+                                { en: "assume", ja: "かていする", pos: "動詞" }, { en: "attitude", ja: "たいど", pos: "名詞" },
+                                { en: "attorney", ja: "べんごし", pos: "名詞" }, { en: "audit", ja: "かんさ", pos: "名詞" },
+                                { en: "authority", ja: "けんげん", pos: "名詞" }, { en: "beneficial", ja: "ゆうえきな", pos: "形容詞" },
+                                { en: "bid", ja: "にゅうさつ", pos: "名詞" }, { en: "broad", ja: "はばひろい", pos: "形容詞" },
+                                { en: "broadcast", ja: "ほうそうする", pos: "動詞" }, { en: "campaign", ja: "せんでんかつどう", pos: "名詞" },
+                                { en: "capacity", ja: "ようりょう", pos: "名詞" }, { en: "certificate", ja: "しょうめいしょ", pos: "名詞" },
+                                { en: "characteristic", ja: "とくちょう", pos: "名詞" }, { en: "collaborate", ja: "きょうりょくする", pos: "動詞" },
+                                { en: "commence", ja: "かいしする", pos: "動詞" }, { en: "commission", ja: "いいんかい", pos: "名詞" },
+                                { en: "committee", ja: "いいんかい", pos: "名詞" }, { en: "compensation", ja: "ほしょう", pos: "名詞" },
+                                { en: "complaint", ja: "くじょう", pos: "名詞" }, { en: "complex", ja: "ふくざつな", pos: "形容詞" },
+                                { en: "comply", ja: "したがう", pos: "動詞" }, { en: "comprehensive", ja: "ほうかつてきな", pos: "形容詞" },
+                                { en: "compromise", ja: "だきょう", pos: "名詞" }, { en: "conduct", ja: "おこなう", pos: "動詞" },
+                                { en: "confident", ja: "じしんがある", pos: "形容詞" }, { en: "confidential", ja: "きみつの", pos: "形容詞" },
+                                { en: "conflict", ja: "しょうとつ", pos: "名詞" }, { en: "consequence", ja: "けっか", pos: "名詞" },
+                                { en: "considerable", ja: "かなりの", pos: "形容詞" }, { en: "consult", ja: "そうだんする", pos: "動詞" },
+                                { en: "contribution", ja: "こうけん", pos: "名詞" }, { en: "convenient", ja: "べんりな", pos: "形容詞" },
+                                { en: "convention", ja: "かいぎ", pos: "名詞" }, { en: "convince", ja: "なっとくさせる", pos: "動詞" },
+                                { en: "coordinate", ja: "ちょうせいする", pos: "動詞" }, { en: "corporate", ja: "ほうじんの", pos: "形容詞" },
+                                { en: "correspond", ja: "いっちする", pos: "動詞" }, { en: "council", ja: "ぎかい", pos: "名詞" },
+                                { en: "criticism", ja: "ひはん", pos: "名詞" }, { en: "custom", ja: "かんしゅう", pos: "名詞" },
+                                { en: "debate", ja: "とうろん", pos: "名詞" }, { en: "debt", ja: "しゃっきん", pos: "名詞" },
+                                { en: "declare", ja: "せんげんする", pos: "動詞" }, { en: "decline", ja: "じたいする", pos: "動詞" },
+                                { en: "dedicate", ja: "ささげる", pos: "動詞" }, { en: "defect", ja: "けっかん", pos: "名詞" },
+                                { en: "deficit", ja: "あかじ", pos: "名詞" }, { en: "degree", ja: "ていど", pos: "名詞" },
+                                { en: "delicate", ja: "せんさいな", pos: "形容詞" }, { en: "delight", ja: "よろこび", pos: "名詞" },
+                                { en: "demonstrate", ja: "じつえんする", pos: "動詞" }, { en: "departure", ja: "しゅっぱつ", pos: "名詞" },
+                                { en: "deposit", ja: "よきん", pos: "名詞" }, { en: "description", ja: "せつめい", pos: "名詞" },
+                                { en: "deserve", ja: "あたいする", pos: "動詞" }, { en: "detect", ja: "けんちする", pos: "動詞" },
+                                { en: "diagnosis", ja: "しんだん", pos: "名詞" }, { en: "dialogue", ja: "たいわ", pos: "名詞" },
+                                { en: "differ", ja: "ことなる", pos: "動詞" }, { en: "district", ja: "ちく", pos: "名詞" },
+                                { en: "distribute", ja: "ぶんぱいする", pos: "動詞" }, { en: "domestic", ja: "こくないの", pos: "形容詞" },
+                                { en: "donate", ja: "きふする", pos: "動詞" }, { en: "dramatic", ja: "げきてきな", pos: "形容詞" },
+                                { en: "due", ja: "きげんの", pos: "形容詞" }, { en: "duration", ja: "きかん", pos: "名詞" },
+                                { en: "duty", ja: "ぎむ", pos: "名詞" }, { en: "effective", ja: "こうかてきな", pos: "形容詞" },
+                                { en: "efficient", ja: "こうりつてきな", pos: "形容詞" }, { en: "eligible", ja: "しかくがある", pos: "形容詞" },
+                                { en: "eliminate", ja: "とりのぞく", pos: "動詞" }, { en: "emergency", ja: "きんきゅう", pos: "名詞" },
+                                { en: "emphasis", ja: "きょうちょう", pos: "名詞" }, { en: "employer", ja: "やといぬし", pos: "名詞" },
+                                { en: "employment", ja: "こよう", pos: "名詞" }, { en: "encourage", ja: "はげます", pos: "動詞" },
+                                { en: "engage", ja: "じゅうじする", pos: "動詞" }, { en: "enterprise", ja: "きぎょう", pos: "名詞" },
+                                { en: "entitle", ja: "しかくをあたえる", pos: "動詞" }, { en: "essential", ja: "ふかけつな", pos: "形容詞" },
+                                { en: "establish", ja: "せつりつする", pos: "動詞" }, { en: "evaluate", ja: "ひょうかする", pos: "動詞" },
+                                { en: "evidence", ja: "しょうこ", pos: "名詞" }, { en: "exact", ja: "せいかくな", pos: "形容詞" },
+                                { en: "examination", ja: "しけん", pos: "名詞" }, { en: "examine", ja: "しらべる", pos: "動詞" },
+                                { en: "excellent", ja: "ゆうしゅうな", pos: "形容詞" }, { en: "exchange", ja: "こうかん", pos: "名詞" },
+                                { en: "executive", ja: "じゅうやく", pos: "名詞" }, { en: "exhibit", ja: "てんじする", pos: "動詞" },
+                                { en: "expand", ja: "かくだいする", pos: "動詞" }, { en: "expect", ja: "よきする", pos: "動詞" },
+                                { en: "expense", ja: "ひよう", pos: "名詞" }, { en: "expert", ja: "せんもんか", pos: "名詞" },
+                                { en: "explore", ja: "ちょうさする", pos: "動詞" }, { en: "export", ja: "ゆしゅつする", pos: "動詞" },
+                                { en: "expose", ja: "さらす", pos: "動詞" }, { en: "express", ja: "ひょうげんする", pos: "動詞" },
+                                { en: "extend", ja: "えんちょうする", pos: "動詞" }, { en: "facility", ja: "しせつ", pos: "名詞" },
+                                { en: "factor", ja: "よういん", pos: "名詞" }, { en: "failure", ja: "しっぱい", pos: "名詞" },
+                                { en: "fair", ja: "こうへいな", pos: "形容詞" }, { en: "familiar", ja: "なじみのある", pos: "形容詞" },
+                                { en: "fare", ja: "うんちん", pos: "名詞" }, { en: "federal", ja: "れんぽうの", pos: "形容詞" },
+                                { en: "feedback", ja: "いけん", pos: "名詞" }, { en: "financial", ja: "ざいむの", pos: "形容詞" },
+                                { en: "firm", ja: "かいしゃ", pos: "名詞" }, { en: "flexible", ja: "じゅうなんな", pos: "形容詞" },
+                                { en: "forecast", ja: "よほう", pos: "名詞" }, { en: "formal", ja: "こうしきの", pos: "形容詞" },
+                                { en: "former", ja: "まえの", pos: "形容詞" }, { en: "found", ja: "せつりつする", pos: "動詞" },
+                                { en: "foundation", ja: "きばん", pos: "名詞" }, { en: "frequent", ja: "ひんぱんな", pos: "形容詞" },
+                                { en: "function", ja: "きのう", pos: "名詞" }, { en: "fund", ja: "しきん", pos: "名詞" },
+                                { en: "fundamental", ja: "きほんてきな", pos: "形容詞" }, { en: "gain", ja: "える", pos: "動詞" },
+                                { en: "gap", ja: "かくさ", pos: "名詞" }, { en: "generate", ja: "うみだす", pos: "動詞" },
+                                { en: "generous", ja: "かんだいな", pos: "形容詞" }, { en: "grant", ja: "じょせいきん", pos: "名詞" },
+                                { en: "gross", ja: "そうけいの", pos: "形容詞" }, { en: "guarantee", ja: "ほしょうする", pos: "動詞" },
+                                { en: "guidance", ja: "しどう", pos: "名詞" }, { en: "headquarters", ja: "ほんしゃ", pos: "名詞" },
+                                { en: "host", ja: "しゅさいする", pos: "動詞" }, { en: "identify", ja: "とくていする", pos: "動詞" },
+                                { en: "ignore", ja: "むしする", pos: "動詞" }, { en: "illegal", ja: "いほうな", pos: "形容詞" },
+                                { en: "impact", ja: "えいきょう", pos: "名詞" }, { en: "implement", ja: "じっしする", pos: "動詞" },
+                                { en: "imply", ja: "ほのめかす", pos: "動詞" }, { en: "import", ja: "ゆにゅうする", pos: "動詞" },
+                                { en: "importance", ja: "じゅうようせい", pos: "名詞" }, { en: "impose", ja: "かす", pos: "動詞" },
+                                { en: "improve", ja: "かいぜんする", pos: "動詞" }, { en: "incentive", ja: "どうき", pos: "名詞" },
+                                { en: "incident", ja: "できごと", pos: "名詞" }, { en: "indicate", ja: "しめす", pos: "動詞" },
+                                { en: "influence", ja: "えいきょう", pos: "名詞" }, { en: "initial", ja: "さいしょの", pos: "形容詞" },
+                                { en: "initiative", ja: "しゅどうけん", pos: "名詞" }, { en: "innovative", ja: "かくしんてきな", pos: "形容詞" },
+                                { en: "inquiry", ja: "といあわせ", pos: "名詞" }, { en: "insight", ja: "どうさつりょく", pos: "名詞" },
+                                { en: "inspect", ja: "けんさする", pos: "動詞" }, { en: "inspire", ja: "こぶする", pos: "動詞" },
+                                { en: "institution", ja: "きかん", pos: "名詞" }, { en: "instruction", ja: "しじ", pos: "名詞" },
+                                { en: "intend", ja: "いとする", pos: "動詞" }, { en: "internal", ja: "ないぶの", pos: "形容詞" },
+                                { en: "international", ja: "こくさいてきな", pos: "形容詞" }, { en: "inventory", ja: "ざいこ", pos: "名詞" },
+                                { en: "investigate", ja: "ちょうさする", pos: "動詞" }, { en: "investment", ja: "とうし", pos: "名詞" },
+                                { en: "invoice", ja: "せいきゅうしょ", pos: "名詞" }, { en: "involve", ja: "まきこむ", pos: "動詞" },
+                                { en: "journal", ja: "ざっし", pos: "名詞" }, { en: "judgment", ja: "はんだん", pos: "名詞" },
+                                { en: "launch", ja: "はつばいする", pos: "動詞" }, { en: "lease", ja: "ちんたいしゃく", pos: "名詞" },
+                                { en: "legal", ja: "ほうてきな", pos: "形容詞" }, { en: "maintain", ja: "いじする", pos: "動詞" },
+                                { en: "majority", ja: "かはんすう", pos: "名詞" }, { en: "mandatory", ja: "ぎむてきな", pos: "形容詞" },
+                                { en: "manufacture", ja: "せいぞうする", pos: "動詞" }, { en: "margin", ja: "りざや", pos: "名詞" },
+                                { en: "maximize", ja: "さいだいかする", pos: "動詞" }, { en: "mechanism", ja: "しくみ", pos: "名詞" },
+                                { en: "mediate", ja: "ちゅうかいする", pos: "動詞" }, { en: "membership", ja: "かいいんしかく", pos: "名詞" },
+                                { en: "memorandum", ja: "しゃないぶんしょ", pos: "名詞" }, { en: "merchandise", ja: "しょうひん", pos: "名詞" },
+                                { en: "merger", ja: "がっぺい", pos: "名詞" }, { en: "merit", ja: "りてん", pos: "名詞" },
+                                { en: "metropolitan", ja: "だいとしの", pos: "形容詞" }, { en: "minimize", ja: "さいしょうかする", pos: "動詞" },
+                                { en: "modify", ja: "しゅうせいする", pos: "動詞" }, { en: "monitor", ja: "かんしする", pos: "動詞" },
+                                { en: "mortgage", ja: "じゅうたくろーん", pos: "名詞" }, { en: "motivate", ja: "どうきづける", pos: "動詞" },
+                                { en: "multiple", ja: "たすうの", pos: "形容詞" }, { en: "mutual", ja: "そうごの", pos: "形容詞" },
+                                { en: "narrow", ja: "せまい", pos: "形容詞" }, { en: "nationwide", ja: "ぜんこくきぼの", pos: "形容詞" },
+                                { en: "negative", ja: "ひていてきな", pos: "形容詞" }, { en: "negotiate", ja: "こうしょうする", pos: "動詞" },
+                                { en: "negotiation", ja: "こうしょう", pos: "名詞" }, { en: "neutral", ja: "ちゅうりつの", pos: "形容詞" },
+                                { en: "nevertheless", ja: "それにもかかわらず", pos: "副詞" }, { en: "nominate", ja: "しめいする", pos: "動詞" },
+                                { en: "nomination", ja: "しめい", pos: "名詞" }, { en: "notable", ja: "ちゅうもくすべき", pos: "形容詞" },
+                                { en: "notification", ja: "つうち", pos: "名詞" }, { en: "notify", ja: "つうちする", pos: "動詞" },
+                                { en: "numerous", ja: "たすうの", pos: "形容詞" }, { en: "objective", ja: "もくひょう", pos: "名詞" },
+                                { en: "obligation", ja: "ぎむ", pos: "名詞" }, { en: "obtain", ja: "にゅうしゅする", pos: "動詞" },
+                                { en: "occupation", ja: "しょくぎょう", pos: "名詞" }, { en: "occupy", ja: "しめる", pos: "動詞" },
+                                { en: "occur", ja: "おこる", pos: "動詞" }, { en: "omit", ja: "しょうりゃくする", pos: "動詞" },
+                                { en: "ongoing", ja: "けいぞくちゅうの", pos: "形容詞" }, { en: "opponent", ja: "あいて", pos: "名詞" },
+                                { en: "oppose", ja: "はんたいする", pos: "動詞" }, { en: "optimistic", ja: "らっかんてきな", pos: "形容詞" },
+                                { en: "organize", ja: "そしきする", pos: "動詞" }, { en: "outcome", ja: "けっか", pos: "名詞" },
+                                { en: "outlet", ja: "ちょくえいてん", pos: "名詞" }, { en: "outline", ja: "がいよう", pos: "名詞" },
+                                { en: "outlook", ja: "みとおし", pos: "名詞" }, { en: "output", ja: "せいさんだか", pos: "名詞" },
+                                { en: "outstanding", ja: "みはらいの", pos: "形容詞" }, { en: "overall", ja: "ぜんたいの", pos: "形容詞" },
+                                { en: "overcome", ja: "こくふくする", pos: "動詞" }, { en: "overdue", ja: "きげんがすぎた", pos: "形容詞" },
+                                { en: "overseas", ja: "かいがいの", pos: "形容詞" }, { en: "oversee", ja: "かんとくする", pos: "動詞" },
+                                { en: "owe", ja: "かりている", pos: "動詞" }, { en: "ownership", ja: "しょゆうけん", pos: "名詞" },
+                                { en: "pamphlet", ja: "しょうさっし", pos: "名詞" }, { en: "particular", ja: "とくていの", pos: "形容詞" },
+                                { en: "partnership", ja: "ていけい", pos: "名詞" }, { en: "patent", ja: "とっきょ", pos: "名詞" },
+                                { en: "patron", ja: "あいこきゃく", pos: "名詞" }, { en: "payable", ja: "しはらわれるべき", pos: "形容詞" },
+                                { en: "payroll", ja: "きゅうよ", pos: "名詞" }, { en: "penalty", ja: "ばっきん", pos: "名詞" },
+                                { en: "pending", ja: "ほりゅうちゅうの", pos: "形容詞" }, { en: "pension", ja: "ねんきん", pos: "名詞" },
+                                { en: "perceive", ja: "にんしきする", pos: "動詞" }, { en: "permanent", ja: "えいきゅうの", pos: "形容詞" },
+                                { en: "permission", ja: "きょか", pos: "名詞" }, { en: "permit", ja: "きょかしょう", pos: "名詞" },
+                                { en: "personnel", ja: "じんじ", pos: "名詞" }, { en: "perspective", ja: "かんてん", pos: "名詞" },
+                                { en: "persuade", ja: "せっとくする", pos: "動詞" }, { en: "phase", ja: "だんかい", pos: "名詞" },
+                                { en: "phenomenon", ja: "げんしょう", pos: "名詞" }, { en: "poll", ja: "よろんちょうさ", pos: "名詞" },
+                                { en: "portfolio", ja: "さくひんしゅう", pos: "名詞" }, { en: "portion", ja: "ぶぶん", pos: "名詞" },
+                                { en: "postpone", ja: "えんきする", pos: "動詞" }, { en: "potential", ja: "せんざいてきな", pos: "形容詞" },
+                                { en: "practical", ja: "じつようてきな", pos: "形容詞" }, { en: "precaution", ja: "よぼうさく", pos: "名詞" },
+                                { en: "precise", ja: "せいかくな", pos: "形容詞" }, { en: "predict", ja: "よそくする", pos: "動詞" },
+                                { en: "preference", ja: "ゆうせん", pos: "名詞" }, { en: "preliminary", ja: "よびの", pos: "形容詞" },
+                                { en: "premise", ja: "しきち", pos: "名詞" }, { en: "premium", ja: "ほけんりょう", pos: "名詞" },
+                                { en: "preserve", ja: "ほぞんする", pos: "動詞" }, { en: "prevent", ja: "ぼうしする", pos: "動詞" },
+                                { en: "previous", ja: "いぜんの", pos: "形容詞" }, { en: "primary", ja: "おもな", pos: "形容詞" },
+                                { en: "principal", ja: "げんぽん", pos: "名詞" }, { en: "priority", ja: "ゆうせんじこう", pos: "名詞" },
+                                { en: "procedure", ja: "てじゅん", pos: "名詞" }, { en: "proceed", ja: "すすむ", pos: "動詞" },
+                                { en: "productivity", ja: "せいさんせい", pos: "名詞" }, { en: "profession", ja: "しょくぎょう", pos: "名詞" },
+                                { en: "proficiency", ja: "じゅくれん", pos: "名詞" }, { en: "profitable", ja: "りえきのあがる", pos: "形容詞" },
+                                { en: "prohibit", ja: "きんしする", pos: "動詞" }, { en: "prominent", ja: "ゆうめいな", pos: "形容詞" },
+                                { en: "promote", ja: "しょうしんさせる", pos: "動詞" }, { en: "promotion", ja: "しょうしん", pos: "名詞" },
+                                { en: "prompt", ja: "すばやい", pos: "形容詞" }, { en: "proof", ja: "しょうこ", pos: "名詞" },
+                                { en: "proper", ja: "てきせつな", pos: "形容詞" }, { en: "property", ja: "ふどうさん", pos: "名詞" },
+                                { en: "proposal", ja: "ていあん", pos: "名詞" }, { en: "propose", ja: "ていあんする", pos: "動詞" },
+                                { en: "prospect", ja: "みこみ", pos: "名詞" }, { en: "prospective", ja: "みこみのある", pos: "形容詞" },
+                                { en: "prosperity", ja: "はんえい", pos: "名詞" }, { en: "provision", ja: "じょうこう", pos: "名詞" },
+                                { en: "publication", ja: "しゅっぱんぶつ", pos: "名詞" }, { en: "publicity", ja: "せんでん", pos: "名詞" },
+                                { en: "pursue", ja: "ついきゅうする", pos: "動詞" }, { en: "qualification", ja: "しかく", pos: "名詞" },
+                                { en: "qualified", ja: "しかくのある", pos: "形容詞" }, { en: "quarterly", ja: "しはんきごとの", pos: "形容詞" },
+                                { en: "questionnaire", ja: "あんけーと", pos: "名詞" }, { en: "quota", ja: "のるま", pos: "名詞" },
+                                { en: "quote", ja: "みつもり", pos: "名詞" }, { en: "receipt", ja: "りょうしゅうしょ", pos: "名詞" },
+                                { en: "recession", ja: "ふきょう", pos: "名詞" }, { en: "recipient", ja: "うけとりにん", pos: "名詞" },
+                                { en: "recognize", ja: "みとめる", pos: "動詞" }, { en: "reduction", ja: "さくげん", pos: "名詞" },
+                                { en: "refer", ja: "さんしょうする", pos: "動詞" }, { en: "reference", ja: "さんしょう", pos: "名詞" },
+                                { en: "reflect", ja: "はんえいする", pos: "動詞" }, { en: "refund", ja: "へんきん", pos: "名詞" },
+                                { en: "regarding", ja: "にかんして", pos: "前置詞" }, { en: "register", ja: "とうろくする", pos: "動詞" },
+                                { en: "regulation", ja: "きせい", pos: "名詞" }, { en: "reject", ja: "きょひする", pos: "動詞" },
+                                { en: "relevant", ja: "かんれんのある", pos: "形容詞" }, { en: "reliable", ja: "しんらいできる", pos: "形容詞" },
+                                { en: "relocation", ja: "いてん", pos: "名詞" }, { en: "rely", ja: "たよる", pos: "動詞" },
+                                { en: "remainder", ja: "のこり", pos: "名詞" }, { en: "remarkable", ja: "けんちょな", pos: "形容詞" },
+                                { en: "remedy", ja: "かいけつさく", pos: "名詞" }, { en: "remind", ja: "おもいださせる", pos: "動詞" },
+                                { en: "remote", ja: "えんかくの", pos: "形容詞" }, { en: "removal", ja: "てっきょ", pos: "名詞" },
+                                { en: "renew", ja: "こうしんする", pos: "動詞" }, { en: "renovation", ja: "かいしゅう", pos: "名詞" },
+                                { en: "repair", ja: "しゅうりする", pos: "動詞" }, { en: "replace", ja: "こうかんする", pos: "動詞" },
+                                { en: "replacement", ja: "こうにん", pos: "名詞" }, { en: "represent", ja: "だいひょうする", pos: "動詞" },
+                                { en: "representative", ja: "だいひょうしゃ", pos: "名詞" }, { en: "reputation", ja: "ひょうばん", pos: "名詞" },
+                                { en: "requirement", ja: "ようけん", pos: "名詞" }, { en: "resign", ja: "じしょくする", pos: "動詞" },
+                                { en: "resolution", ja: "かいけつ", pos: "名詞" }, { en: "resolve", ja: "かいけつする", pos: "動詞" },
+                                { en: "restore", ja: "ふっきさせる", pos: "動詞" }, { en: "restrict", ja: "せいげんする", pos: "動詞" },
+                                { en: "resume", ja: "りれきしょ", pos: "名詞" }, { en: "retail", ja: "こうり", pos: "名詞" },
+                                { en: "retain", ja: "ほじする", pos: "動詞" }, { en: "retire", ja: "たいしょくする", pos: "動詞" },
+                                { en: "revenue", ja: "しゅうにゅう", pos: "名詞" }, { en: "revise", ja: "しゅうせいする", pos: "動詞" },
+                                { en: "revision", ja: "しゅうせい", pos: "名詞" }, { en: "reward", ja: "ほうしゅう", pos: "名詞" },
+                                { en: "satisfaction", ja: "まんぞく", pos: "名詞" }, { en: "seek", ja: "もとめる", pos: "動詞" },
+                                { en: "selection", ja: "せんたく", pos: "名詞" }, { en: "seminar", ja: "けんしゅうかい", pos: "名詞" },
+                                { en: "senior", ja: "じょうきゅうの", pos: "形容詞" }, { en: "sensitive", ja: "びんかんな", pos: "形容詞" },
+                                { en: "separate", ja: "わける", pos: "動詞" }, { en: "serious", ja: "しんこくな", pos: "形容詞" },
+                                { en: "session", ja: "かいごう", pos: "名詞" }, { en: "settle", ja: "かいけつする", pos: "動詞" },
+                                { en: "severe", ja: "きびしい", pos: "形容詞" }, { en: "shareholder", ja: "かぶぬし", pos: "名詞" },
+                                { en: "shipment", ja: "しゅっか", pos: "名詞" }, { en: "shortage", ja: "ふそく", pos: "名詞" },
+                                { en: "significant", ja: "じゅうような", pos: "形容詞" }, { en: "specific", ja: "ぐたいてきな", pos: "形容詞" },
+                                { en: "specify", ja: "とくていする", pos: "動詞" }, { en: "stable", ja: "あんていした", pos: "形容詞" },
+                                { en: "statement", ja: "めいさいしょ", pos: "名詞" }, { en: "statistics", ja: "とうけい", pos: "名詞" },
+                                { en: "status", ja: "ちい", pos: "名詞" }, { en: "steady", ja: "あんていした", pos: "形容詞" },
+                                { en: "stock", ja: "ざいこ", pos: "名詞" }, { en: "strategy", ja: "せんりゃく", pos: "名詞" },
+                                { en: "strict", ja: "きびしい", pos: "形容詞" }, { en: "structure", ja: "こうぞう", pos: "名詞" },
+                                { en: "submit", ja: "ていしゅつする", pos: "動詞" }, { en: "subscribe", ja: "ていきこうどくする", pos: "動詞" },
+                                { en: "subscription", ja: "ていきこうどく", pos: "名詞" }, { en: "subsequent", ja: "そのごの", pos: "形容詞" },
+                                { en: "subsidiary", ja: "こがいしゃ", pos: "名詞" }, { en: "substantial", ja: "かなりの", pos: "形容詞" },
+                                { en: "substitute", ja: "だいようする", pos: "動詞" }, { en: "succeed", ja: "せいこうする", pos: "動詞" },
+                                { en: "sufficient", ja: "じゅうぶんな", pos: "形容詞" }, { en: "suitable", ja: "ふさわしい", pos: "形容詞" },
+                                { en: "summary", ja: "ようやく", pos: "名詞" }, { en: "supervise", ja: "かんとくする", pos: "動詞" },
+                                { en: "supervisor", ja: "じょうし", pos: "名詞" }, { en: "survey", ja: "ちょうさ", pos: "名詞" },
+                                { en: "suspend", ja: "いちじていしする", pos: "動詞" }, { en: "sustainable", ja: "じぞくかのうな", pos: "形容詞" },
+                                { en: "technical", ja: "ぎじゅつてきな", pos: "形容詞" }, { en: "temporary", ja: "いちじてきな", pos: "形容詞" },
+                                { en: "tenant", ja: "にゅうきょしゃ", pos: "名詞" }, { en: "terminate", ja: "しゅうりょうさせる", pos: "動詞" },
+                                { en: "territory", ja: "りょういき", pos: "名詞" }, { en: "timely", ja: "たいみんぐのよい", pos: "形容詞" },
+                                { en: "transaction", ja: "とりひき", pos: "名詞" }, { en: "transfer", ja: "てんそうする", pos: "動詞" },
+                                { en: "transition", ja: "いこう", pos: "名詞" }, { en: "translate", ja: "ほんやくする", pos: "動詞" },
+                                { en: "transportation", ja: "ゆそう", pos: "名詞" }, { en: "trend", ja: "けいこう", pos: "名詞" },
+                                { en: "turnover", ja: "りしょくりつ", pos: "名詞" }, { en: "unanimous", ja: "まんじょういっちの", pos: "形容詞" },
+                                { en: "undergo", ja: "けいけんする", pos: "動詞" }, { en: "unfortunately", ja: "ざんねんながら", pos: "副詞" },
+                                { en: "unique", ja: "どくとくの", pos: "形容詞" }, { en: "update", ja: "こうしんする", pos: "動詞" },
+                                { en: "upgrade", ja: "あっぷぐれーどする", pos: "動詞" }, { en: "urgent", ja: "きんきゅうの", pos: "形容詞" },
+                                { en: "utility", ja: "こうきょうりょうきん", pos: "名詞" }, { en: "vacancy", ja: "くうしつ", pos: "名詞" },
+                                { en: "vacant", ja: "あいている", pos: "形容詞" }, { en: "valid", ja: "ゆうこうな", pos: "形容詞" },
+                                { en: "valuable", ja: "かちのある", pos: "形容詞" }, { en: "variety", ja: "たようせい", pos: "名詞" },
+                                { en: "vary", ja: "ことなる", pos: "動詞" }, { en: "vehicle", ja: "のりもの", pos: "名詞" },
+                                { en: "venture", ja: "べんちゃーきぎょう", pos: "名詞" }, { en: "venue", ja: "かいじょう", pos: "名詞" },
+                                { en: "verify", ja: "かくにんする", pos: "動詞" }, { en: "via", ja: "けいゆで", pos: "前置詞" },
+                                { en: "vicinity", ja: "きんじょ", pos: "名詞" }, { en: "violation", ja: "いはん", pos: "名詞" },
+                                { en: "vital", ja: "ひじょうにじゅうような", pos: "形容詞" }, { en: "volume", ja: "ようりょう", pos: "名詞" },
+                                { en: "voluntary", ja: "じしゅてきな", pos: "形容詞" }, { en: "volunteer", ja: "ぼらんてぃあ", pos: "名詞" },
+                                { en: "vote", ja: "とうひょうする", pos: "動詞" }, { en: "voucher", ja: "ひきかえけん", pos: "名詞" },
+                                { en: "wage", ja: "ちんぎん", pos: "名詞" }, { en: "warehouse", ja: "そうこ", pos: "名詞" },
+                                { en: "warranty", ja: "ほしょう", pos: "名詞" }, { en: "wealth", ja: "とみ", pos: "名詞" },
+                                { en: "welfare", ja: "ふくりこうせい", pos: "名詞" }, { en: "wholesale", ja: "おろしうり", pos: "名詞" },
+                                { en: "widespread", ja: "ひろくふきゅうした", pos: "形容詞" }, { en: "withdraw", ja: "てっかいする", pos: "動詞" },
+                                { en: "workforce", ja: "ろうどうりょく", pos: "名詞" }, { en: "workshop", ja: "けんしゅうかい", pos: "名詞" },
+                                { en: "worldwide", ja: "せかいじゅうの", pos: "形容詞" }, { en: "worth", ja: "かちがある", pos: "形容詞" },
+                                { en: "yield", ja: "さんしゅつする", pos: "動詞" }
+                            ],
+                                8: [
+                                    // カスタム単語リスト（初期サンプル）
+                                    { en: "custom", ja: "かすたむ", pos: "名詞" },
+                                    { en: "example", ja: "れい", pos: "名詞" }
+                                ]
+        };
+
+        // ===== ゲーム状態 =====
+        let currentLevel = 1;
+        let currentFormat = 'ja-typing';
+        let currentMode = 'practice';
+        let isPlaying = false;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let timeLeft = 120;  // 2分
+        let activeBoxes = [];
+        let nextBoxId = 0;
+        let gameLoopId;
+        let spawnTimer;
+        let isMuted = false;
+        let wordHistory = [];  // 単語履歴
+        let isHintEnabled = true;  // ヒント機能（暗記モードで5ミス時に日本語表示）
+        const boxSpawnRate = 2000;
+        const baseSpeed = 1.2;  // 全モード一律の速度
+
+        // ===== Audio =====
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let bgmInterval;
+        let bgmNoteIndex = 0;
+
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (isMuted) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playSE(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            switch (type) {
+                case 'type': playTone(800, 'sine', 0.08, 0.08); break;
+                case 'miss': playTone(150, 'sawtooth', 0.2, 0.15); break;
+                case 'ship':
+                    playTone(523, 'sine', 0.1, 0.1);
+                    setTimeout(() => playTone(659, 'sine', 0.1, 0.1), 80);
+                    setTimeout(() => playTone(784, 'sine', 0.15, 0.1), 160);
+                    break;
+            }
+        }
+
+        // ===== 英単語発音（Web Speech API） =====
+        // ===== 英単語発音（Web Speech API） =====
+        function speakWord(enText) {
+            if (isMuted) return;
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(enText);
+                utterance.lang = 'en-US';
+                utterance.rate = 1.0;
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        function startBGM() {
+            if (bgmInterval) clearInterval(bgmInterval);
+            if (isMuted) return;
+            const bassLine = [110, 0, 110, 0, 110, 110, 0, 100];
+            bgmNoteIndex = 0;
+            bgmInterval = setInterval(() => {
+                if (isMuted) return;
+                if (bassLine[bgmNoteIndex] > 0) playTone(bassLine[bgmNoteIndex], 'square', 0.1, 0.04);
+                if (bgmNoteIndex % 2 === 0) playTone(2000 + Math.random() * 500, 'triangle', 0.05, 0.02);
+                bgmNoteIndex = (bgmNoteIndex + 1) % 8;
+            }, 250);
+        }
+
+        function stopBGM() { clearInterval(bgmInterval); }
+        function toggleMute() { isMuted = !isMuted; if (isMuted) stopBGM(); else if (isPlaying) startBGM(); }
+
+        // ===== UI =====
+        let currentSpeedMultiplier = 1.0;
+
+        function selectLevel(lvl) {
+            currentLevel = lvl;
+            const buttons = document.querySelectorAll('#level-buttons .btn-lvl');
+            buttons.forEach(b => b.classList.remove('selected'));
+            // ボタン順序: 1,2,3,4,5,6,7,8 なのでインデックスをマッピング
+            const levelToIndex = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7 };
+            const idx = levelToIndex[lvl];
+            if (idx !== undefined && buttons[idx]) {
+                buttons[idx].classList.add('selected');
+            }
+        }
+
+        function selectFormat(format) {
+            currentFormat = format;
+            const buttons = document.querySelectorAll('#format-buttons .btn-mode');
+            buttons.forEach(b => b.classList.remove('selected'));
+            if (format === 'ja-typing') buttons[0].classList.add('selected');
+            else buttons[1].classList.add('selected');
+        }
+
+        function selectMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('#mode-buttons .btn-mode').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('#mode-buttons .btn-mode')[mode === 'practice' ? 0 : 1].classList.add('selected');
+        }
+
+        function selectSpeed(speed) {
+            currentSpeedMultiplier = speed;
+            const buttons = document.querySelectorAll('#speed-buttons .btn-mode');
+            buttons.forEach(b => b.classList.remove('selected'));
+
+            if (speed === 1.0) buttons[0].classList.add('selected');
+            else if (speed === 1.5) buttons[1].classList.add('selected');
+            else if (speed === 2.0) buttons[2].classList.add('selected');
+
+            // タイトル画面コンベアの速度同期
+            // 視覚的な速さを合わせるため、基準速度を1/4（15px/s）にする
+            // 上部: 1530px / 15 = 102
+            // 下部: 1123px / 15 = 74.8
+            const topTime = 102 / speed;
+            const bottomTime = 74.8 / speed;
+
+            document.documentElement.style.setProperty('--title-conveyor-speed-top', `${topTime}s`);
+            document.documentElement.style.setProperty('--title-conveyor-speed-bottom', `${bottomTime}s`);
+        }
+
+        function goHome() {
+            isPlaying = false;
+            cancelAnimationFrame(gameLoopId);
+            clearTimeout(spawnTimer);
+            stopBGM();
+            document.querySelectorAll('.box').forEach(b => b.remove());
+            activeBoxes = [];
+            document.getElementById('ui-layer').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('preview-screen').classList.add('hidden');
+            document.getElementById('title-screen').classList.remove('hidden');
+        }
+
+        // ===== プレビュー画面 =====
+        // 編集中のインデックスを保持
+        let editingindex = -1;
+
+        let isEndlessMode = false;
+        let selectedIndices = new Set(); // 選択された単語のインデックス（レベルごとではなく、現在のビューでの管理が必要だが、シンプルに実装するためrender時にID付与）
+
+        function showPreview() {
+            document.getElementById('title-screen').classList.add('hidden');
+            document.getElementById('preview-screen').classList.remove('hidden');
+
+            document.getElementById('preview-level').textContent = currentLevel;
+            document.getElementById('preview-mode').textContent = currentMode === 'practice' ? '練習モード' : '暗記モード';
+
+            // フィルターUIの追加（再描画ごとにリセットしないようにチェックするか、毎回作り直すか）
+            const screen = document.getElementById('preview-screen');
+            const existingFilter = document.getElementById('pos-filters');
+            if (existingFilter) existingFilter.remove();
+
+            // 出題モード選択UI
+            const existingGameMode = document.getElementById('game-mode-select');
+            if (existingGameMode) existingGameMode.remove();
+
+            const modeDiv = document.createElement('div');
+            modeDiv.id = 'game-mode-select';
+            modeDiv.style.marginBottom = '15px';
+            modeDiv.innerHTML = `
+                <label style="margin-right:15px; font-weight:bold;">
+                    <input type="radio" name="loopMode" value="once" checked onchange="isEndlessMode=false"> 各単語1回のみ
+                </label>
+                <label style="font-weight:bold;">
+                    <input type="radio" name="loopMode" value="endless" onchange="isEndlessMode=true"> 無限ループ（時間切れまで）
+                </label>
+            `;
+
+            // ヒント機能トグル（暗記モードのみ表示）
+            const existingHintToggle = document.getElementById('hint-toggle');
+            if (existingHintToggle) existingHintToggle.remove();
+
+            const hintDiv = document.createElement('div');
+            hintDiv.id = 'hint-toggle';
+            hintDiv.style.marginBottom = '15px';
+            hintDiv.style.display = currentMode === 'memorization' ? 'block' : 'none';
+            hintDiv.innerHTML = `
+                <label style="font-weight:bold; color: #ff6b35;">
+                    <input type="checkbox" id="hint-checkbox" ${isHintEnabled ? 'checked' : ''} onchange="isHintEnabled=this.checked">
+                    💡 ヒント機能（5回ミスで日本語表示）
+                </label>
+            `;
+
+            const filterDiv = document.createElement('div');
+            filterDiv.id = 'pos-filters';
+            filterDiv.className = 'filter-buttons';
+            filterDiv.innerHTML = `
+                <button class="btn-filter selected" onclick="filterPos('all')">すべて</button>
+                <button class="btn-filter" onclick="filterPos('名詞')">名詞</button>
+                <button class="btn-filter" onclick="filterPos('動詞')">動詞</button>
+                <button class="btn-filter" onclick="filterPos('形容詞')">形容詞</button>
+                <button class="btn-filter" onclick="filterPos('副詞')">副詞</button>
+                <button class="btn-filter" onclick="filterPos('接続詞')">接続詞</button>
+            `;
+
+            // 選択操作ボタン
+            const existingSelectionControls = document.getElementById('selection-controls');
+            if (existingSelectionControls) existingSelectionControls.remove();
+
+            const selectionDiv = document.createElement('div');
+            selectionDiv.id = 'selection-controls';
+            selectionDiv.style.marginBottom = '10px';
+            selectionDiv.style.display = 'flex';
+            selectionDiv.style.gap = '10px';
+            selectionDiv.style.justifyContent = 'center';
+            selectionDiv.innerHTML = `
+                <button class="btn-selection" onclick="selectAllVisible()" style="padding:6px 12px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">✓ 全選択</button>
+                <button class="btn-selection" onclick="deselectAllVisible()" style="padding:6px 12px; background:#f44336; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">✗ 全解除</button>
+                <span id="selection-count" style="align-self:center; font-size:0.9rem; color:#666;"></span>
+            `;
+
+            // 検索ボックス
+            const existingSearchBox = document.getElementById('search-box-container');
+            if (existingSearchBox) existingSearchBox.remove();
+
+            const searchDiv = document.createElement('div');
+            searchDiv.id = 'search-box-container';
+            searchDiv.style.marginBottom = '10px';
+            searchDiv.style.display = 'flex';
+            searchDiv.style.gap = '8px';
+            searchDiv.style.justifyContent = 'center';
+            searchDiv.style.alignItems = 'center';
+            searchDiv.innerHTML = `
+                <span style="font-size:1.2rem;">🔍</span>
+                <input type="text" id="word-search-input" placeholder="英語/日本語/ローマ字で検索..." 
+                    onkeypress="if(event.key==='Enter') executeSearch()"
+                    style="padding:8px 12px; font-size:0.9rem; border:2px solid #ddd; border-radius:20px; width:250px; outline:none; transition:border-color 0.2s;"
+                    onfocus="this.style.borderColor='#4CAF50'" onblur="this.style.borderColor='#ddd'">
+                <button onclick="executeSearch()" style="padding:6px 12px; background:#2196F3; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.9rem; font-weight:bold;">検索</button>
+                <button onclick="clearSearch()" style="padding:6px 10px; background:#888; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">クリア</button>
+            `;
+
+            // タイトルの後に挿入
+            const title = screen.querySelector('.preview-subtitle');
+            title.after(modeDiv);
+            modeDiv.after(hintDiv);
+            hintDiv.after(filterDiv);
+            filterDiv.after(selectionDiv);
+            selectionDiv.after(searchDiv);
+
+            // カスタムレベル（Lv.8）の場合は単語追加ボタンを表示
+            const existingCustomControls = document.getElementById('custom-controls');
+            if (existingCustomControls) existingCustomControls.remove();
+
+            if (currentLevel === 8) {
+                const customDiv = document.createElement('div');
+                customDiv.id = 'custom-controls';
+                customDiv.style.marginBottom = '10px';
+                customDiv.style.display = 'flex';
+                customDiv.style.gap = '10px';
+                customDiv.style.justifyContent = 'center';
+                customDiv.innerHTML = `
+                    <button onclick="openCustomModal()" style="padding:8px 16px; background:linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.95rem;">📝 単語を追加</button>
+                    <button onclick="clearAllCustomWords()" style="padding:8px 16px; background:#dc3545; color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem;">🗑️ 全削除</button>
+                `;
+                searchDiv.after(customDiv);
+            }
+
+            // 全選択初期化
+            const words = wordData[currentLevel];
+            selectedIndices = new Set(words.map((_, i) => i));
+
+            currentPosFilter = 'all'; // リセット
+            currentSearchQuery = ''; // 検索リセット
+            renderWordList();
+        }
+
+        function clearAllCustomWords() {
+            if (confirm('カスタム単語をすべて削除しますか？この操作は元に戻せません。')) {
+                wordData[8] = [];
+                saveCustomWords();
+                selectedIndices = new Set();
+                renderWordList();
+                alert('カスタム単語をすべて削除しました');
+            }
+        }
+
+        let currentPosFilter = 'all';
+        let currentSearchQuery = ''; // 検索キーワード
+
+        function filterPos(pos) {
+            currentPosFilter = pos;
+            document.querySelectorAll('.btn-filter').forEach(b => {
+                b.classList.toggle('selected', b.innerText === (pos === 'all' ? 'すべて' : pos));
+            });
+            renderWordList();
+        }
+
+        let matchedWordIndices = new Set(); // 検索にヒットした単語のインデックス
+
+        // 検索実行（ボタン押下またはEnter）
+        function executeSearch() {
+            const input = document.getElementById('word-search-input');
+            if (!input || !input.value.trim()) {
+                matchedWordIndices = new Set();
+                currentSearchQuery = '';
+                renderWordList();
+                return;
+            }
+
+            currentSearchQuery = input.value.toLowerCase().trim();
+
+            // マッチした単語を探す
+            const allWords = wordData[currentLevel];
+            matchedWordIndices = new Set();
+
+            allWords.forEach((w, i) => {
+                // 品詞フィルターをチェック
+                if (currentPosFilter !== 'all' && w.pos !== currentPosFilter) {
+                    return;
+                }
+
+                const ts = new TypingState(w.ja);
+                const info = ts.getDisplayInfo();
+                const romaji = (info.typed + info.current + info.remaining).toLowerCase();
+                const enLower = w.en.toLowerCase();
+                const jaLower = w.ja.toLowerCase();
+
+                if (enLower.includes(currentSearchQuery) ||
+                    jaLower.includes(currentSearchQuery) ||
+                    romaji.includes(currentSearchQuery)) {
+                    matchedWordIndices.add(i);
+                }
+            });
+
+            renderWordList();
+
+            // マッチがない場合はメッセージ表示
+            if (matchedWordIndices.size === 0) {
+                alert(`「${input.value}」に該当する単語が見つかりませんでした。`);
+            } else {
+                // マッチした最初のカードにスクロール
+                setTimeout(() => {
+                    const firstMatch = document.querySelector('.word-card.search-match');
+                    if (firstMatch) {
+                        firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
+        }
+
+        // 検索入力ハンドラ（リアルタイム検索は削除、ボタン押下時のみ）
+        function handleSearchInput(query) {
+            // リアルタイム検索は無効化（ボタン押下時のみ検索）
+        }
+
+        // 検索クリア
+        function clearSearch() {
+            currentSearchQuery = '';
+            matchedWordIndices = new Set();
+            const input = document.getElementById('word-search-input');
+            if (input) input.value = '';
+            renderWordList();
+        }
+
+        function toggleWordSelection(index) {
+            if (selectedIndices.has(index)) {
+                selectedIndices.delete(index);
+            } else {
+                selectedIndices.add(index);
+            }
+            updateSelectionCount();
+        }
+
+        // 現在表示中（フィルター後 + 検索後）のインデックスを取得
+        // 検索時はヒットした単語を上部にソート
+        function getVisibleIndices() {
+            const allWords = wordData[currentLevel];
+            const matchedIndices = [];  // 検索にヒットした単語
+            const otherIndices = [];    // ヒットしなかった単語
+
+            allWords.forEach((w, i) => {
+                // 品詞フィルター
+                if (currentPosFilter !== 'all' && w.pos !== currentPosFilter) {
+                    return;
+                }
+
+                // 検索フィルター
+                if (currentSearchQuery) {
+                    const ts = new TypingState(w.ja);
+                    const info = ts.getDisplayInfo();
+                    const romaji = (info.typed + info.current + info.remaining).toLowerCase();
+                    const enLower = w.en.toLowerCase();
+                    const jaLower = w.ja.toLowerCase();
+
+                    // マッチ判定
+                    const isMatch = enLower.includes(currentSearchQuery) ||
+                        jaLower.includes(currentSearchQuery) ||
+                        romaji.includes(currentSearchQuery);
+
+                    if (isMatch) {
+                        // 完全一致か部分一致かでスコア付け
+                        const exactMatch = enLower === currentSearchQuery ||
+                            jaLower === currentSearchQuery ||
+                            romaji === currentSearchQuery;
+                        matchedIndices.push({ index: i, exact: exactMatch });
+                    } else {
+                        otherIndices.push(i);
+                    }
+                } else {
+                    // 検索なしの場合は通常通り
+                    otherIndices.push(i);
+                }
+            });
+
+            // 検索がある場合：完全一致 → 部分一致の順でソートし、その後に非マッチを追加
+            if (currentSearchQuery) {
+                matchedIndices.sort((a, b) => (b.exact ? 1 : 0) - (a.exact ? 1 : 0));
+                return matchedIndices.map(m => m.index).concat(otherIndices);
+            }
+
+            return otherIndices;
+        }
+
+        // 表示中の単語をすべて選択
+        function selectAllVisible() {
+            const visibleIndices = getVisibleIndices();
+            visibleIndices.forEach(i => selectedIndices.add(i));
+            renderWordList();
+        }
+
+        // 表示中の単語をすべて解除
+        function deselectAllVisible() {
+            const visibleIndices = getVisibleIndices();
+            visibleIndices.forEach(i => selectedIndices.delete(i));
+            renderWordList();
+        }
+
+        // 選択数を更新表示
+        function updateSelectionCount() {
+            const countSpan = document.getElementById('selection-count');
+            if (countSpan) {
+                const totalWords = wordData[currentLevel].length;
+                const selectedCount = selectedIndices.size;
+                const visibleIndices = getVisibleIndices();
+                const visibleSelectedCount = visibleIndices.filter(i => selectedIndices.has(i)).length;
+                countSpan.textContent = `選択中: ${visibleSelectedCount}/${visibleIndices.length} (全体: ${selectedCount}/${totalWords})`;
+            }
+        }
+
+        function renderWordList() {
+            const container = document.getElementById('word-list-container');
+            container.innerHTML = '';
+
+            const allWords = wordData[currentLevel];
+            // フィルタリングは表示だけ？それとも選択も？ -> ここでは表示のみフィルタリングし、選択状態はindexで管理
+            const displayIndices = [];
+            allWords.forEach((w, i) => {
+                if (currentPosFilter === 'all' || w.pos === currentPosFilter) {
+                    displayIndices.push(i);
+                }
+            });
+
+            // 検索ヒットした単語を上部に表示するためソート
+            if (matchedWordIndices.size > 0) {
+                displayIndices.sort((a, b) => {
+                    const aMatched = matchedWordIndices.has(a) ? 0 : 1;
+                    const bMatched = matchedWordIndices.has(b) ? 0 : 1;
+                    return aMatched - bMatched;
+                });
+            }
+
+            if (displayIndices.length === 0) {
+                container.innerHTML = '<div style="width:100%; text-align:center; padding:20px;">該当する単語はありません</div>';
+                return;
+            }
+
+            displayIndices.forEach((index, displayOrder) => {
+                const word = allWords[index];
+                const ts = new TypingState(word.ja);
+                const info = ts.getDisplayInfo();
+                const romaji = info.typed + info.current + info.remaining;
+
+                const posClass = `pos-${word.pos || 'その他'}`;
+                const isChecked = selectedIndices.has(index) ? 'checked' : '';
+                const displayNumber = displayOrder + 1; // 表示番号（1始まり）
+                const isMatched = matchedWordIndices.has(index); // 検索ヒット判定
+
+                const card = document.createElement('div');
+                card.className = 'word-card' + (isMatched ? ' search-match' : '');
+                // 検索ヒットした場合は赤い枠を追加
+                if (isMatched) {
+                    card.style.border = '3px solid #ff4444';
+                    card.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.5)';
+                    card.style.backgroundColor = '#fff5f5';
+                }
+                // CSSでgrid itemとしてのスタイルは定義済み
+
+                // チェックボックス追加
+                const checkboxHtml = `<input type="checkbox" ${isChecked} onchange="toggleWordSelection(${index})" style="width:16px; height:16px; cursor:pointer; margin-right:4px;">`;
+
+                if (editingindex === index) {
+                    // 編集モード
+                    card.innerHTML = `
+                        <span class="word-number" style="font-size:0.7rem; font-weight:bold; color:#888; margin-right:4px;">${displayNumber}.</span>
+                        ${checkboxHtml}
+                        <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+                            <div class="en" style="font-size:0.9rem;">${word.en}</div>
+                            <input type="text" id="edit-input-${index}" value="${word.ja}" placeholder="ひらがな" style="font-size:0.8rem; padding:2px; width:100%; box-sizing:border-box;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <button class="btn-save" onclick="saveWord(${index})" style="padding:2px 4px; font-size:0.7rem;">完</button>
+                        </div>
+                    `;
+                } else {
+                    // 表示モード
+                    card.innerHTML = `
+                        <span class="word-number" style="font-size:0.7rem; font-weight:bold; color:#888; margin-right:4px; min-width:24px;">${displayNumber}.</span>
+                         ${checkboxHtml}
+                        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span class="pos-tag ${posClass}" style="font-size:0.7rem; padding:1px 4px;">${word.pos || '他'}</span>
+                                <div class="en" style="flex:1; margin-left:5px; margin-right:5px;">${word.en}</div>
+                                <button class="btn-add-mylist" onclick="event.stopPropagation(); addToMyList('${word.en}', '${word.ja}', '${word.pos || 'その他'}')" title="マイ単語リストに追加">＋</button>
+                            </div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                                <div class="ja" style="font-size:0.8rem; color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:50%;">${word.ja}</div>
+                                <div class="ro" style="font-size:0.7rem; color:#aaa; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:45%; text-align:right;">${romaji}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <button class="btn-edit" onclick="startEdit(${index})" style="padding:2px 6px; font-size:0.7rem;">✎</button>
+                            ${currentLevel === 8 ? `<button onclick="deleteCustomWord(${index})" style="padding:2px 6px; font-size:0.7rem; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer; margin-top:2px;">🗑️</button>` : ''}
+                        </div>
+                    `;
+                }
+                container.appendChild(card);
+
+                // 編集モードの場合、フォーカスを当てる
+                if (editingindex === index) {
+                    setTimeout(() => document.getElementById(`edit-input-${index}`).focus(), 0);
+                }
+            });
+
+            // 選択数を更新
+            updateSelectionCount();
+        }
+
+        function startEdit(index) {
+            editingindex = index;
+            renderWordList();
+        }
+
+        function saveWord(index) {
+            const input = document.getElementById(`edit-input-${index}`);
+            const newJa = input.value.trim();
+            if (newJa) {
+                // 和訳を更新
+                wordData[currentLevel][index].ja = newJa;
+            }
+            editingindex = -1;
+            renderWordList();
+        }
+
+        // スペースキーでゲーム開始
+        // スペースキーでゲーム開始
+        document.addEventListener('keydown', (e) => {
+            // 入力中や編集中、モーダル表示中はスペースキーで開始しない
+            if (editingindex !== -1) return;
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            if (!document.getElementById('custom-word-modal').classList.contains('hidden')) return;
+            if (!document.getElementById('history-modal').classList.contains('hidden')) return;
+
+            const previewScreen = document.getElementById('preview-screen');
+            if (e.code === 'Space' && previewScreen && !previewScreen.classList.contains('hidden')) {
+                e.preventDefault();
+                startGame();
+            }
+        });
+
+        function startGame() {
+            document.getElementById('title-screen').classList.add('hidden');
+            document.getElementById('preview-screen').classList.add('hidden'); // プレビューも隠す
+            document.getElementById('ui-layer').classList.remove('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+
+            // 既存のボックスを完全に削除
+            document.querySelectorAll('.box').forEach(b => b.remove());
+            score = 0; combo = 0; maxCombo = 0; timeLeft = 120;  // 2分
+            activeBoxes = []; nextBoxId = 0;
+            wordHistory = [];  // 履歴リセット
+
+            // 選択された単語のみを抽出
+            const allWords = wordData[currentLevel];
+            const sourceList = allWords.filter((_, i) => selectedIndices.has(i));
+
+            if (sourceList.length === 0) {
+                alert("単語が選択されていません！1つ以上選択してください。");
+                return;
+            }
+
+            shuffledWords = sourceList.sort(() => Math.random() - 0.5);
+            wordIndex = 0;
+
+            updateHUD();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            startBGM();
+            isPlaying = true;
+            gameLoop();
+            spawnLoop();
+            // タイマーは表示用として残すが、終了条件は単語切れに変更（ただし時間切れでも終了）
+            const timerInt = setInterval(() => {
+                if (!isPlaying) { clearInterval(timerInt); return; }
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) { clearInterval(timerInt); endGame(); }
+            }, 1000);
+        }
+
+        // シャッフルされた単語リストとインデックス
+        let shuffledWords = [];
+        let wordIndex = 0;
+
+        function spawnLoop() {
+            if (!isPlaying) return;
+
+            // 前の箱との間隔をチェック
+            const lastBox = activeBoxes.filter(b => !b.isCleared).slice(-1)[0];
+            // 画面上に箱が多すぎる場合は生成を待つ
+            if (!lastBox || lastBox.xPos > 100) { // 間隔を広めに
+                // 単語がすべて出尽くして、かつ画面上の箱もすべて処理されたら終了
+                // 無限モードの場合は終了しない
+                if (!isEndlessMode && wordIndex >= shuffledWords.length && activeBoxes.length === 0) {
+                    endGame();
+                    return;
+                }
+                // まだ単語がある場合のみ生成
+                if (wordIndex < shuffledWords.length || isEndlessMode) {
+                    spawnBox();
+                }
+            }
+
+            // 単語切れの場合はループを止めるチェック
+            if (!isEndlessMode && wordIndex >= shuffledWords.length && activeBoxes.length === 0) {
+                endGame();
+                return;
+            }
+
+            let rate = boxSpawnRate - (currentLevel * 150);
+            if (rate < 1500) rate = 1500;
+            spawnTimer = setTimeout(spawnLoop, rate);
+        }
+
+        // ===== 箱生成（TypingState使用） =====
+        function spawnBox() {
+            // 無限モードでリストを使い切ったら再シャッフルしてリセット
+            if (isEndlessMode && wordIndex >= shuffledWords.length) {
+                // 再シャッフル
+                shuffledWords.sort(() => Math.random() - 0.5);
+                wordIndex = 0;
+            }
+
+            if (wordIndex >= shuffledWords.length) return;
+
+            const wordObj = shuffledWords[wordIndex++];
+
+            // 出題形式による分岐
+            const isEnglishTyping = (currentFormat === 'en-typing');
+            const target = isEnglishTyping ? wordObj.en.toLowerCase() : wordObj.ja;
+
+            const typingState = new TypingState(target, isEnglishTyping);
+            const displayInfo = typingState.getDisplayInfo();
+            const boxEl = document.createElement('div');
+            boxEl.className = `box lv${currentLevel}`;
+            if (currentMode === 'memorization') boxEl.classList.add('memorization');
+
+            // 表示コンテンツの決定
+            let topText, middleText, bottomText;
+            const posClass = `pos-${wordObj.pos || 'その他'}`;
+
+            if (isEnglishTyping) {
+                // --- 英単語モード (A: 日本語(問題), B: 英単語(入力)) ---
+                topText = wordObj.ja;
+                middleText = ''; // 中段なし
+
+                // 下段（英単語入力部）
+                // 練習モード: 全表示
+                // 暗記モード: 最初の1文字のみ表示、残り〇
+                if (currentMode === 'memorization') {
+                    const enWord = wordObj.en;
+                    bottomText = enWord.charAt(0) + '〇'.repeat(Math.max(0, enWord.length - 1));
+                } else {
+                    bottomText = wordObj.en;
+                }
+            } else {
+                // --- 和訳モード (A: 英単語, B: 日本語(答え), C: ローマ字(入力)) ---
+                topText = wordObj.en;
+                middleText = wordObj.ja;
+                // 下段（ローマ字入力部）
+                bottomText = displayInfo.typed + displayInfo.current + displayInfo.remaining;
+
+                if (currentMode === 'memorization') {
+                    // 暗記モード: 日本語(答え)を隠す
+                    middleText = middleText.charAt(0) + "〇".repeat(Math.max(0, middleText.length - 1));
+                    // ローマ字ガイドも隠す
+                    bottomText = bottomText.charAt(0) + "_".repeat(Math.max(0, bottomText.length - 1));
+                }
+            }
+
+            boxEl.innerHTML = `
+                <div class="stamp">PASSED</div>
+                <div class="label">
+                    <span class="pos-tag ${posClass}" style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); box-shadow:0 1px 2px rgba(0,0,0,0.2);">${wordObj.pos || 'その他'}</span>
+                    <div class="word-en">${topText}</div>
+                    <div class="word-jp" style="${middleText ? '' : 'display:none;'}">${middleText}</div>
+                    <div class="word-romaji">${bottomText}</div>
+                </div>
+            `;
+            // ランダムな垂直位置を設定（-60px ～ +60px）
+            const randomYOffset = (Math.random() - 0.5) * 120;
+            boxEl.style.marginBottom = `${randomYOffset}px`;
+
+            document.getElementById('game-container').appendChild(boxEl);
+            activeBoxes.push({
+                id: nextBoxId++,
+                wordObj: wordObj,
+                typingState: typingState,
+                element: boxEl,
+                xPos: -150,
+                yOffset: randomYOffset,
+                speed: baseSpeed * currentSpeedMultiplier,  // 選択された速度倍率を適用
+                isCleared: false,
+                hasMissed: false, // ミスフラグ初期化
+                missCount: 0      // ミス回数
+            });
+        }
+
+        // ===== ゲームループ =====
+        function gameLoop() {
+            if (!isPlaying) return;
+            const containerWidth = document.getElementById('game-container').offsetWidth;
+            const deleteIndices = [];
+            activeBoxes.forEach((box, index) => {
+                if (box.isCleared) {
+                    box.xPos += 20;
+                    box.element.style.transform = `translateX(${box.xPos + 150}px) translateY(-50px) rotate(10deg)`;
+                    box.element.style.opacity = parseFloat(box.element.style.opacity || 1) - 0.02;
+                    if (box.xPos > containerWidth) deleteIndices.push(index);
+                } else {
+                    box.xPos += box.speed;
+                    box.element.style.transform = `translateX(${box.xPos + 150}px)`;
+                    if (box.xPos > containerWidth) {
+                        // 画面外に出た（失敗）
+                        deleteIndices.push(index);
+                        // 履歴に追加（不正解）
+                        wordHistory.push({ en: box.wordObj.en, ja: box.wordObj.ja, status: 'failed' });
+                        resetCombo();
+                        playSE('miss');
+                    }
+                }
+            });
+            for (let i = deleteIndices.length - 1; i >= 0; i--) {
+                const idx = deleteIndices[i];
+                activeBoxes[idx].element.remove();
+                activeBoxes.splice(idx, 1);
+            }
+            const belt = document.getElementById('conveyor-belt');
+            belt.style.animationDuration = '2s';  // 一律のベルト速度
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        // ===== キー入力（柔軟ローマ字判定） =====
+        window.addEventListener('keydown', (e) => {
+            if (!isPlaying) return;
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+            if (e.key.length !== 1) return;
+
+            const char = e.key.toLowerCase();
+
+            // ターゲット選択
+            let targetBox = activeBoxes.find(b => b.typingState && b.typingState.currentInput.length > 0 && !b.isCleared);
+            if (!targetBox) {
+                targetBox = activeBoxes.find(b => !b.isCleared && b.xPos > -100);
+            }
+            if (!targetBox || !targetBox.typingState) return;
+
+            // 柔軟なローマ字判定
+            const result = targetBox.typingState.processInput(char);
+
+            if (result.success) {
+                playSE('type');
+                updateBoxVisual(targetBox);
+                if (result.completed) {
+                    completeBox(targetBox);
+                }
+            } else {
+                playSE('miss');
+                // ミスフラグを立てる
+                targetBox.hasMissed = true;
+                targetBox.missCount = (targetBox.missCount || 0) + 1;
+                resetCombo();
+                document.body.style.backgroundColor = '#ffe6e6';
+                setTimeout(() => document.body.style.backgroundColor = 'var(--bg-color)', 100);
+
+                // ヒント機能：暗記モードで5回ミスしたら日本語を表示
+                if (isHintEnabled && currentMode === 'memorization' && targetBox.missCount >= 5 && !targetBox.hintShown) {
+                    targetBox.hintShown = true;
+                    const jpDiv = targetBox.element.querySelector('.word-jp');
+                    if (jpDiv) {
+                        jpDiv.textContent = targetBox.wordObj.ja;
+                        jpDiv.style.color = '#ff6b35';  // ヒントは目立つ色で
+                        jpDiv.style.fontWeight = 'bold';
+                    }
+                }
+            }
+        });
+
+        // ===== 表示更新 =====
+        function updateBoxVisual(box) {
+            const romajiDiv = box.element.querySelector('.word-romaji');
+            const { typed, current, remaining } = box.typingState.getDisplayInfo();
+
+            if (box.typingState.isEnglishMode) {
+                // --- 英単語モード ---
+                let displayHtml = '';
+
+                if (currentMode === 'memorization') {
+                    // 暗記モード: 入力済みは表示、未入力は〇（ただし最初の1文字はヒント表示）
+                    // typed: 入力済み
+                    // current + remaining: 未入力
+                    let untyped = current + remaining;
+                    let maskedDisplay = '';
+
+                    if (typed.length === 0 && untyped.length > 0) {
+                        // 開始時：1文字目を表示
+                        maskedDisplay = `<span class="char-target">${untyped.charAt(0)}</span>` + '〇'.repeat(Math.max(0, untyped.length - 1));
+                    } else {
+                        // 途中：未入力分はすべて隠す
+                        maskedDisplay = '〇'.repeat(untyped.length);
+                    }
+                    displayHtml = `<span class="char-typed">${typed}</span>${maskedDisplay}`;
+                } else {
+                    // 練習モード: 全表示、次に入力する文字を強調
+                    let targetChar = current;
+                    let rest = remaining;
+
+                    if (!targetChar && remaining.length > 0) {
+                        targetChar = remaining.charAt(0);
+                        rest = remaining.substring(1);
+                    }
+                    displayHtml = `<span class="char-typed">${typed}</span>` +
+                        `<span class="char-target">${targetChar}</span>` +
+                        `${rest}`;
+                }
+                romajiDiv.innerHTML = displayHtml;
+                return;
+            }
+
+            if (currentMode === 'practice') {
+                romajiDiv.innerHTML =
+                    `<span class="char-typed">${typed}</span>` +
+                    `<span class="char-target">${current || remaining.charAt(0)}</span>` +
+                    `${current ? remaining : remaining.substring(1)}`;
+            } else {
+                // 暗記モード：入力中の文字のみ表示、残りは_で表示（次のヒントは非表示）
+                const remainingCount = current.length > 0
+                    ? remaining.length
+                    : remaining.length - 1;
+                const underscores = "_".repeat(Math.max(0, remainingCount));
+                romajiDiv.innerHTML =
+                    `<span class="char-typed">${typed}</span>` +
+                    `<span class="char-target">${current}</span>` +
+                    `${underscores}`;
+            }
+        }
+
+        function completeBox(box) {
+            box.isCleared = true;
+            playSE('ship');
+            speakWord(box.wordObj.en, box.wordObj.ja);
+            const stamp = box.element.querySelector('.stamp');
+            stamp.classList.add('show');
+
+            // 履歴に追加（正解 or 怪しい）
+            // 既にxPosチェックで追加されないように、正解時は即座に追加
+            const status = box.hasMissed ? 'suspicious' : 'perfect';
+            wordHistory.push({
+                en: box.wordObj.en,
+                ja: box.wordObj.ja,
+                pos: box.wordObj.pos, // 品詞追加
+                status: status,
+                missCount: box.missCount || 0
+            });
+
+            const wordLength = box.wordObj.ja.length;
+            // 怪しい場合は少しスコア減点してもよいが、ここでは満点扱いとするか、少し減らすか
+            // 要望にはないのでスコアはそのままとするが、もし減らしたいならここで調整
+            const points = (currentLevel * 100) + (wordLength * 20) + (combo * 15);
+            score += points;
+            combo++;
+            if (combo > maxCombo) maxCombo = combo;
+
+            // コンボで時間延長（最大2秒）
+            const bonusTime = Math.min(2, Math.floor(combo / 2));
+            if (bonusTime > 0) {
+                timeLeft += bonusTime;
+                const bonusEl = document.getElementById('time-bonus');
+                bonusEl.innerText = `+${bonusTime}s`;
+                bonusEl.style.opacity = 1;
+                setTimeout(() => bonusEl.style.opacity = 0, 1000);
+            }
+
+            const comboEl = document.getElementById('combo-display');
+            comboEl.innerText = `${combo} コンボ!`;
+            comboEl.style.opacity = 1;
+            comboEl.style.transform = 'translateX(-50%) scale(1.5)';
+            setTimeout(() => comboEl.style.transform = 'translateX(-50%) scale(1)', 100);
+            updateHUD();
+        }
+
+        function resetCombo() {
+            combo = 0;
+            document.getElementById('combo-display').style.opacity = 0;
+        }
+
+        function updateHUD() {
+            document.getElementById('score').innerText = score;
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const timeDisplay = document.getElementById('time-display');
+            timeDisplay.innerText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            timeDisplay.classList.toggle('warning', timeLeft < 10);
+        }
+
+        function endGame() {
+            isPlaying = false;
+            stopBGM();
+
+            // 画面に残っている未クリアの箱をチェック
+            activeBoxes.forEach(box => {
+                if (!box.isCleared) {
+                    // 入力が少しでも進んでいる場合のみ「不正解」として履歴に追加
+                    const info = box.typingState.getDisplayInfo();
+                    if (info.typed.length > 0) {
+                        wordHistory.push({
+                            en: box.wordObj.en,
+                            ja: box.wordObj.ja,
+                            pos: box.wordObj.pos,
+                            status: 'failed',
+                            missCount: box.missCount || 0
+                        });
+                    }
+                }
+            });
+
+            document.getElementById('ui-layer').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-combo').innerText = maxCombo;
+
+            // 正解率計算
+            const totalAttempts = wordHistory.length;
+            const perfects = wordHistory.filter(w => w.status === 'perfect').length;
+            const accuracy = totalAttempts > 0 ? Math.round((perfects / totalAttempts) * 100) : 0;
+            document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+
+            // ランク計算
+            let rank = "見習い"; // アルバイト -> 見習い
+            if (score > 5000) rank = "正社員";
+            if (score > 10000) rank = "マネージャー";
+            if (score > 20000) rank = "工場長";
+            if (score > 50000) rank = "物流王";
+            document.getElementById('final-rank').innerText = rank; // rank-text -> final-rank
+
+            // 単語履歴表示
+            document.getElementById('correct-count').innerText = perfects;
+            document.getElementById('total-count').innerText = totalAttempts;
+
+            // 単語履歴表示
+            document.getElementById('correct-count').innerText = perfects;
+            document.getElementById('total-count').innerText = totalAttempts;
+
+            // フィルター初期化と描画
+            filterHistory('all');
+
+            // 間違えた単語がない場合は復習ボタンを無効化
+            const retryMistakesBtn = document.getElementById('retry-mistakes-btn');
+            const hasMistakes = wordHistory.some(w => w.status === 'suspicious' || w.status === 'failed');
+            if (retryMistakesBtn) {
+                retryMistakesBtn.disabled = !hasMistakes;
+                retryMistakesBtn.style.opacity = hasMistakes ? '1' : '0.5';
+                retryMistakesBtn.style.cursor = hasMistakes ? 'pointer' : 'not-allowed';
+            }
+        }
+
+        function retryGame() {
+            document.getElementById('result-screen').classList.add('hidden');
+            showPreview();
+        }
+
+        // 間違えた単語だけで復習
+        let mistakeWordsForRetry = []; // 復習用の単語リスト
+
+        // フィルタリング機能
+        let currentHistoryFilter = 'all';
+
+        function filterHistory(status) {
+            currentHistoryFilter = status;
+            document.querySelectorAll('.filter-buttons .btn-filter').forEach(btn => {
+                btn.classList.remove('selected');
+                if (status === 'all' && btn.innerText === 'すべて') btn.classList.add('selected');
+                if (status === 'perfect' && btn.innerText === '正解') btn.classList.add('selected');
+                if (status === 'suspicious' && btn.innerText === '怪しい') btn.classList.add('selected');
+                if (status === 'failed' && btn.innerText === '不正解') btn.classList.add('selected');
+            });
+            renderHistoryList();
+        }
+
+        function renderHistoryList() {
+            const historyContainer = document.getElementById('word-history');
+            const filtered = wordHistory.filter(w => {
+                if (currentHistoryFilter === 'all') return true;
+                return w.status === currentHistoryFilter;
+            });
+
+            if (filtered.length === 0) {
+                historyContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">該当する記録はありません</div>';
+                return;
+            }
+
+            historyContainer.innerHTML = filtered.map(w => {
+                let statusText = '';
+                let statusColor = '';
+                let borderColor = '';
+
+                if (w.status === 'perfect') {
+                    statusText = '✓ 正解';
+                    statusColor = 'var(--success-color)';
+                    borderColor = 'var(--success-color)';
+                } else if (w.status === 'suspicious') {
+                    statusText = `⚠ 怪しい (${w.missCount}ミス)`;
+                    statusColor = '#ffc107';
+                    borderColor = '#ffc107';
+                } else {
+                    statusText = '✗ 不正解';
+                    statusColor = 'var(--danger-color)';
+                    borderColor = 'var(--danger-color)';
+                }
+
+                return `
+                    <div class="word-card" style="border-left: 4px solid ${borderColor}; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 8px; background: white; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="pos-tag pos-${w.pos || 'その他'}" style="font-size: 0.7rem;">${w.pos || '他'}</span>
+                            <div class="en" style="font-weight: bold; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${w.en}</div>
+                            <button class="btn-add-mylist" onclick="event.stopPropagation(); addToMyList('${w.en}', '${w.ja}', '${w.pos || 'その他'}')" title="マイ単語リストに追加">＋</button>
+                        </div>
+                        <div class="ja" style="font-size: 0.85rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${w.ja}</div>
+                        <div style="font-size: 0.8rem; color: ${statusColor}; font-weight: bold; text-align: right;">
+                            ${statusText}
+                        </div>
+                    </div>
+                    `;
+            }).join('');
+        }
+
+        function retryMistakesOnly() {
+            // suspicious または failed の単語を抽出
+            const mistakes = wordHistory.filter(w => w.status === 'suspicious' || w.status === 'failed');
+
+            if (mistakes.length === 0) {
+                alert('間違えた・怪しい単語がありません！素晴らしい！🎉');
+                return;
+            }
+
+            // 重複を除去（同じ単語が複数回出てくる可能性がある）
+            const uniqueMistakes = [];
+            const seenWords = new Set();
+            mistakes.forEach(w => {
+                if (!seenWords.has(w.en)) {
+                    seenWords.add(w.en);
+                    uniqueMistakes.push({ en: w.en, ja: w.ja, pos: w.pos });
+                }
+            });
+
+            mistakeWordsForRetry = uniqueMistakes;
+
+            // リザルト画面を隠してゲームを開始
+            document.getElementById('result-screen').classList.add('hidden');
+            startMistakesReviewGame();
+        }
+
+        function startMistakesReviewGame() {
+            document.getElementById('title-screen').classList.add('hidden');
+            document.getElementById('preview-screen').classList.add('hidden');
+            document.getElementById('ui-layer').classList.remove('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+
+            // 既存のボックスを完全に削除
+            document.querySelectorAll('.box').forEach(b => b.remove());
+            activeBoxes = [];
+            nextBoxId = 0;
+
+            score = 0; combo = 0; maxCombo = 0; timeLeft = 120;
+            wordHistory = [];
+
+            // 間違えた単語リストを使用
+            shuffledWords = mistakeWordsForRetry.sort(() => Math.random() - 0.5);
+            wordIndex = 0;
+
+            updateHUD();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            startBGM();
+            isPlaying = true; // フラグを立てる
+
+            // アニメーションループが重複しないように一度だけ呼び出すか、
+            // 既存のループが生きていればそれを使う形にするが
+            // ここでは簡易的に requestAnimationFrame が重複しても
+            // isPlayingフラグ制御で問題ない構成になっているか確認。
+            // gameLoopId で管理する方が安全だが、現状のコードベースに合わせて実施。
+
+            // 既存のループが走っている可能性を考慮して、一度キャンセルする手もあるが
+            // グローバル変数 gameLoopId があればキャンセル
+            if (typeof gameLoopId !== 'undefined') cancelAnimationFrame(gameLoopId);
+            gameLoop();
+
+            // spawnLoopも同様にリセット
+            if (typeof spawnTimer !== 'undefined') clearTimeout(spawnTimer);
+            spawnLoop();
+
+            const timerInt = setInterval(() => {
+                if (!isPlaying) { clearInterval(timerInt); return; }
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) { clearInterval(timerInt); endGame(); }
+            }, 1000);
+        }
+
+        // ===== カスタム単語機能 =====
+        function openCustomModal() {
+            document.getElementById('custom-word-modal').classList.remove('hidden');
+            switchCustomTab('manual'); // デフォルトは手動入力
+
+            document.getElementById('custom-en').value = '';
+            document.getElementById('custom-ja').value = '';
+            document.getElementById('custom-pos').value = '名詞';
+            document.getElementById('bulk-add-text').value = '';
+            document.getElementById('custom-en').focus();
+
+            // リスト選択タブの初期化
+            document.getElementById('select-source-level').value = '1';
+            document.getElementById('select-source-pos').value = 'all';
+            selectedSourceIndices = new Set();
+            renderSourceWordList();
+        }
+
+        function closeCustomModal() {
+            document.getElementById('custom-word-modal').classList.add('hidden');
+        }
+
+        function switchCustomTab(tabName) {
+            const manualBtn = document.getElementById('tab-btn-manual');
+            const selectBtn = document.getElementById('tab-btn-select');
+            const manualTab = document.getElementById('tab-manual');
+            const selectTab = document.getElementById('tab-select');
+
+            if (tabName === 'manual') {
+                manualBtn.style.borderBottomColor = '#28a745';
+                manualBtn.style.color = 'black';
+                selectBtn.style.borderBottomColor = 'transparent';
+                selectBtn.style.color = '#666';
+                manualTab.classList.remove('hidden');
+                selectTab.classList.add('hidden');
+            } else {
+                manualBtn.style.borderBottomColor = 'transparent';
+                manualBtn.style.color = '#666';
+                selectBtn.style.borderBottomColor = '#007bff'; // 青色
+                selectBtn.style.color = 'black';
+                manualTab.classList.add('hidden');
+                selectTab.classList.remove('hidden');
+            }
+        }
+
+        let selectedSourceIndices = new Set();
+
+        function renderSourceWordList() {
+            const level = parseInt(document.getElementById('select-source-level').value);
+            const posFilter = document.getElementById('select-source-pos').value;
+            const container = document.getElementById('source-word-list');
+            container.innerHTML = '';
+
+            const words = wordData[level];
+
+            if (!words) return;
+
+            words.forEach((w, i) => {
+                if (posFilter !== 'all' && w.pos !== posFilter) return;
+
+                const isChecked = selectedSourceIndices.has(i) ? 'checked' : '';
+                const item = document.createElement('div');
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.padding = '4px';
+                item.style.borderBottom = '1px solid #f0f0f0';
+                item.innerHTML = `
+                    <input type="checkbox" id="src-check-${i}" ${isChecked} onchange="toggleSourceWordSelection(${i})" style="margin-right:8px; cursor:pointer;">
+                    <div style="flex:1;">
+                        <span style="font-weight:bold;">${w.en}</span>
+                        <span style="font-size:0.8rem; color:#666; margin-left:5px;">${w.ja}</span>
+                        <span style="font-size:0.7rem; color:#888; margin-left:5px; border:1px solid #ddd; padding:0 3px; border-radius:3px;">${w.pos || '他'}</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function toggleSourceWordSelection(index) {
+            if (selectedSourceIndices.has(index)) {
+                selectedSourceIndices.delete(index);
+            } else {
+                selectedSourceIndices.add(index);
+            }
+        }
+
+        function selectAllSource() {
+            const level = parseInt(document.getElementById('select-source-level').value);
+            const posFilter = document.getElementById('select-source-pos').value;
+            const words = wordData[level];
+
+            words.forEach((w, i) => {
+                if (posFilter === 'all' || w.pos === posFilter) {
+                    selectedSourceIndices.add(i);
+                }
+            });
+            renderSourceWordList();
+        }
+
+        function deselectAllSource() {
+            selectedSourceIndices.clear();
+            renderSourceWordList();
+        }
+
+        function addSelectedWordsFromSource() {
+            const level = parseInt(document.getElementById('select-source-level').value);
+            const words = wordData[level];
+            let addedCount = 0;
+
+            selectedSourceIndices.forEach(index => {
+                const w = words[index];
+                // 重複チェック（簡易的：英単語が一致したらスキップするか、許可するか。ここでは許可するが確認はしない）
+                wordData[8].push({ en: w.en, ja: w.ja, pos: w.pos });
+                addedCount++;
+            });
+
+            if (addedCount > 0) {
+                saveCustomWords();
+                alert(`${addedCount}個の単語を追加しました！`);
+                selectedSourceIndices.clear();
+                renderSourceWordList();
+
+                if (currentLevel === 8) {
+                    selectedIndices = new Set(wordData[8].map((_, i) => i));
+                    renderWordList();
+                }
+            } else {
+                alert('単語が選択されていません');
+            }
+        }
+
+        function addCustomWord() {
+            const en = document.getElementById('custom-en').value.trim();
+            const ja = document.getElementById('custom-ja').value.trim();
+            const pos = document.getElementById('custom-pos').value;
+
+            if (!en || !ja) {
+                alert('英単語と日本語を入力してください');
+                return;
+            }
+
+            wordData[8].push({ en, ja, pos });
+            saveCustomWords();
+
+            alert(`「${en}」を追加しました！`);
+
+            // 入力欄をクリア
+            document.getElementById('custom-en').value = '';
+            document.getElementById('custom-ja').value = '';
+            document.getElementById('custom-en').focus();
+
+            // プレビューが開いている場合は更新
+            if (currentLevel === 8) {
+                selectedIndices = new Set(wordData[8].map((_, i) => i));
+                renderWordList();
+            }
+        }
+
+        function bulkAddCustomWords() {
+            const text = document.getElementById('bulk-add-text').value.trim();
+            if (!text) {
+                alert('一括追加するテキストを入力してください');
+                return;
+            }
+
+            const lines = text.split('\n');
+            let addedCount = 0;
+
+            lines.forEach(line => {
+                const parts = line.split(',').map(p => p.trim());
+                if (parts.length >= 2) {
+                    const en = parts[0];
+                    const ja = parts[1];
+                    const pos = parts[2] || '名詞';
+
+                    if (en && ja) {
+                        wordData[8].push({ en, ja, pos });
+                        addedCount++;
+                    }
+                }
+            });
+
+            if (addedCount > 0) {
+                saveCustomWords();
+                alert(`${addedCount}個の単語を追加しました！`);
+                document.getElementById('bulk-add-text').value = '';
+
+                if (currentLevel === 8) {
+                    selectedIndices = new Set(wordData[8].map((_, i) => i));
+                    renderWordList();
+                }
+            } else {
+                alert('追加できる単語がありませんでした。形式を確認してください。');
+            }
+        }
+
+        function deleteCustomWord(index) {
+            if (confirm(`「${wordData[8][index].en}」を削除しますか？`)) {
+                wordData[8].splice(index, 1);
+                saveCustomWords();
+                selectedIndices = new Set(wordData[8].map((_, i) => i));
+                renderWordList();
+            }
+        }
+
+        // ===== データ永続化 (LocalStorage) =====
+        function saveCustomWords() {
+            localStorage.setItem('shipEigo_customWords', JSON.stringify(wordData[8]));
+        }
+
+        function loadCustomWords() {
+            const saved = localStorage.getItem('shipEigo_customWords');
+            if (saved) {
+                try {
+                    wordData[8] = JSON.parse(saved);
+                } catch (e) {
+                    console.error('カスタム単語の読み込みに失敗しました', e);
+                }
+            }
+        }
+
+        // ===== 学習履歴の保存 =====
+        function saveLearningHistory() {
+            // ユーザー要望により、暗記モードのみ履歴に残す
+            if (currentMode !== 'memorization') return;
+
+            const history = JSON.parse(localStorage.getItem('shipEigo_learningHistory') || '[]');
+
+            // 間違えた・怪しい単語のみを抽出して記録
+            const mistakes = wordHistory
+                .filter(w => w.status === 'suspicious' || w.status === 'failed')
+                .map(w => ({ en: w.en, ja: w.ja, status: w.status }));
+
+            const session = {
+                date: new Date().toISOString(),
+                level: currentLevel,
+                mode: currentMode,
+                format: currentFormat, // フォーマット（英単語/和訳）も保存
+                score: score,
+                maxCombo: maxCombo,
+                totalWords: wordHistory.length,
+                correctWords: wordHistory.filter(w => w.status === 'perfect').length,
+                suspiciousWords: wordHistory.filter(w => w.status === 'suspicious').length,
+                failedWords: wordHistory.filter(w => w.status === 'failed').length,
+                accuracy: wordHistory.length > 0
+                    ? Math.round((wordHistory.filter(w => w.status === 'perfect').length / wordHistory.length) * 100)
+                    : 0,
+                mistakes: mistakes // 詳細データとしてミス単語のみ保存
+            };
+
+            history.push(session);
+
+            // 容量制限: 50プレイ分（ユーザー要望により100→50に変更）
+            if (history.length > 50) {
+                history.shift(); // 古いデータを削除
+            }
+
+            localStorage.setItem('shipEigo_learningHistory', JSON.stringify(history));
+
+            // 苦手単語の記録（こちらは累積データとして残す）
+            updateWeakWords();
+        }
+
+        function updateWeakWords() {
+            const weakWords = JSON.parse(localStorage.getItem('shipEigo_weakWords') || '{}');
+
+            wordHistory.forEach(w => {
+                // キーにフォーマットを含める（英単語タイピングと和訳タイピングで別扱い）
+                const key = `${w.en}_${currentLevel}_${currentFormat}`;
+                if (!weakWords[key]) {
+                    weakWords[key] = {
+                        en: w.en, ja: w.ja, pos: w.pos,
+                        level: currentLevel,
+                        format: currentFormat, // フォーマットも保存
+                        missCount: 0,
+                        correctCount: 0
+                    };
+                }
+
+                if (w.status === 'perfect') {
+                    weakWords[key].correctCount++;
+                } else {
+                    weakWords[key].missCount++;
+                }
+            });
+
+            localStorage.setItem('shipEigo_weakWords', JSON.stringify(weakWords));
+        }
+
+        function getLearningStats(targetFormat) {
+            const history = JSON.parse(localStorage.getItem('shipEigo_learningHistory') || '[]');
+            const weakWords = JSON.parse(localStorage.getItem('shipEigo_weakWords') || '{}');
+
+            // 履歴フィルタリング
+            const filteredHistory = history.filter(h => {
+                const fmt = h.format || 'ja-typing'; // 古いデータは和訳扱い
+                return fmt === targetFormat;
+            });
+
+            const totalSessions = filteredHistory.length;
+            const totalScore = filteredHistory.reduce((sum, s) => sum + s.score, 0);
+            const avgAccuracy = totalSessions > 0
+                ? Math.round(filteredHistory.reduce((sum, s) => sum + s.accuracy, 0) / totalSessions)
+                : 0;
+
+            // 苦手単語フィルタリング
+            const weakList = Object.values(weakWords)
+                .filter(w => {
+                    const fmt = w.format || 'ja-typing';
+                    if (fmt !== targetFormat) return false;
+                    return w.missCount > w.correctCount;
+                })
+                .sort((a, b) => (b.missCount - b.correctCount) - (a.missCount - a.correctCount))
+                .slice(0, 10);
+
+            // 履歴リスト（新しい順）
+            const fullHistory = filteredHistory.slice().reverse();
+
+            return { totalSessions, totalScore, avgAccuracy, weakList, fullHistory };
+        }
+
+        // 起動時にカスタム単語を読み込む
+        loadCustomWords();
+
+        // ゲーム終了時に学習履歴を保存するようにendGameを修正
+        const originalEndGame = endGame;
+        endGame = function () {
+            originalEndGame();
+            saveLearningHistory();
+        };
+
+        // ===== 学習履歴表示 =====
+        let currentHistoryTab = 'ja-typing';
+
+        function showHistory() {
+            switchHistoryTab(currentHistoryTab); // 現在のタブで表示
+            document.getElementById('history-modal').classList.remove('hidden');
+        }
+
+        function switchHistoryTab(format) {
+            currentHistoryTab = format;
+
+            // タブスタイルの更新
+            const jaTab = document.getElementById('hist-tab-ja');
+            const enTab = document.getElementById('hist-tab-en');
+
+            if (format === 'ja-typing') {
+                jaTab.style.borderBottomColor = '#007bff';
+                jaTab.style.color = '#007bff';
+                enTab.style.borderBottomColor = 'transparent';
+                enTab.style.color = '#666';
+            } else {
+                jaTab.style.borderBottomColor = 'transparent';
+                jaTab.style.color = '#666';
+                enTab.style.borderBottomColor = '#007bff';
+                enTab.style.color = '#007bff';
+            }
+
+            const stats = getLearningStats(format);
+            document.getElementById('hist-total-sessions').innerText = stats.totalSessions;
+            document.getElementById('hist-avg-accuracy').innerText = stats.avgAccuracy + '%';
+            document.getElementById('hist-total-score').innerText = stats.totalScore;
+
+            // 苦手単語リスト
+            const weakContainer = document.getElementById('weak-words-list');
+            if (stats.weakList.length === 0) {
+                weakContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">まだデータがありません</div>';
+            } else {
+                weakContainer.innerHTML = stats.weakList.map((w, i) => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #f0f0f0;">
+                        <div style="flex:1;">
+                            <div style="display:flex; align-items:center;">
+                                <div style="font-weight:bold; font-size:0.95rem; margin-right: 5px;">${i + 1}. ${w.en}</div>
+                                <button class="btn-add-mylist" onclick="event.stopPropagation(); addToMyList('${w.en}', '${w.ja}', '${w.pos || 'その他'}')" title="マイ単語リストに追加">＋</button>
+                            </div>
+                            <div style="font-size:0.8rem; color:#555;">${w.ja}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:0.8rem; color:#dc3545; font-weight:bold;">${w.missCount}ミス</span>
+                            <div style="font-size:0.7rem; color:#888;">正解: ${w.correctCount}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // プレイ履歴リスト
+            const container = document.getElementById('play-history-list');
+            if (stats.fullHistory.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">まだプレイ履歴がありません</div>';
+            } else {
+                container.innerHTML = stats.fullHistory.map(h => {
+                    const d = new Date(h.date);
+                    const dateStr = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                    const mistakesCount = h.mistakes ? h.mistakes.length : (h.suspiciousWords + h.failedWords);
+
+                    return `
+                    <div style="padding:8px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:bold; font-size:0.9rem; color:#333;">${dateStr}</div>
+                            <div style="font-size:0.8rem; color:#666;">Lv.${h.level} / スコア: ${h.score}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:bold; font-size:0.9rem; color:${h.accuracy >= 80 ? '#28a745' : '#dc3545'};">正解率 ${h.accuracy}%</div>
+                            <div style="font-size:0.8rem; color:#888;">ミス: ${mistakesCount}語</div>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function clearHistoryData() {
+            if (confirm('学習履歴と苦手単語データをすべて消去しますか？\nこの操作は取り消せません。')) {
+                localStorage.removeItem('shipEigo_learningHistory');
+                localStorage.removeItem('shipEigo_weakWords');
+                alert('データを消去しました。');
+                showHistory(); // 表示更新
+            }
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('history-modal').classList.add('hidden');
+        }
+
+        // ===== ヘルプモーダル =====
+        function openHelpModal() {
+            document.getElementById('help-modal').classList.remove('hidden');
+        }
+
+        function closeHelpModal() {
+            document.getElementById('help-modal').classList.add('hidden');
+        }
+
+        // ===== マイ単語リスト機能 =====
+        let myWordList = [];
+
+        function loadMyList() {
+            try {
+                const saved = localStorage.getItem('shipEigo_myWordList');
+                if (saved) {
+                    myWordList = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('マイ単語リスト読み込みエラー', e);
+                myWordList = [];
+            }
+        }
+
+        function saveMyList() {
+            localStorage.setItem('shipEigo_myWordList', JSON.stringify(myWordList));
+        }
+
+        function addToMyList(en, ja, pos) {
+            // 重複チェック
+            if (myWordList.some(w => w.en === en)) {
+                showToast(`「${en}」はリストに登録済みです`, 'warning');
+                return;
+            }
+            myWordList.push({ en, ja, pos });
+            saveMyList();
+            showToast(`「${en}」をリストに追加しました！`, 'success');
+        }
+
+        function deleteFromMyList(index) {
+            if (confirm(`「${myWordList[index].en}」をリストから削除しますか？`)) {
+                myWordList.splice(index, 1);
+                saveMyList();
+                renderMyList();
+                showToast('削除しました', 'success');
+            }
+        }
+
+        function openMyListModal() {
+            document.getElementById('mylist-modal').classList.remove('hidden');
+            renderMyList();
+        }
+
+        function closeMyListModal() {
+            document.getElementById('mylist-modal').classList.add('hidden');
+        }
+
+        function renderMyList() {
+            const container = document.getElementById('mylist-container');
+            if (myWordList.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#888;">登録された単語はありません。<br>ゲーム画面や履歴から追加しましょう！</div>';
+                return;
+            }
+            container.innerHTML = myWordList.map((w, i) => `
+                <div class="word-card" style="display: flex; align-items: center; padding: 10px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 8px;">
+                    <span class="pos-tag pos-${w.pos || 'その他'}" style="margin-right: 10px;">${w.pos || '他'}</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; font-size: 1.1rem; color: #333;">${w.en}</div>
+                        <div style="font-size: 0.9rem; color: #666;">${w.ja}</div>
+                    </div>
+                    <button onclick="deleteFromMyList(${i})" style="background: #dc3545; color: white; border: none; width: 30px; height: 30px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center;">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function startMyListGame() {
+            if (myWordList.length === 0) {
+                alert('単語が登録されていません！');
+                return;
+            }
+            closeMyListModal();
+            document.getElementById('title-screen').classList.add('hidden');
+            document.getElementById('preview-screen').classList.add('hidden');
+            document.getElementById('ui-layer').classList.remove('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+
+            document.querySelectorAll('.box').forEach(b => b.remove());
+            activeBoxes = [];
+            nextBoxId = 0;
+            score = 0; combo = 0; maxCombo = 0; timeLeft = 120;
+            wordHistory = [];
+
+            shuffledWords = [...myWordList].sort(() => Math.random() - 0.5);
+            wordIndex = 0;
+
+            updateHUD();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            startBGM();
+            isPlaying = true;
+
+            if (typeof gameLoopId !== 'undefined') cancelAnimationFrame(gameLoopId);
+            gameLoop();
+
+            if (typeof spawnTimer !== 'undefined') clearTimeout(spawnTimer);
+            spawnLoop();
+
+            const timerInt = setInterval(() => {
+                if (!isPlaying) { clearInterval(timerInt); return; }
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) { clearInterval(timerInt); endGame(); }
+            }, 1000);
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'success' ? 'success' : ''}`;
+            toast.innerHTML = (type === 'success' ? '✅ ' : '⚠️ ') + message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // 初期ロード
+        loadMyList();
+
+    </script>
+</body>
+
+</html>
