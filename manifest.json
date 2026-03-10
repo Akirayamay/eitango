@@ -1,0 +1,14 @@
+{
+  "name": "Ship Eigo - 英単語タイピングゲーム",
+  "short_name": "Ship Eigo",
+  "description": "楽しく学べる英単語タイピングゲーム。コンベアベルトで流れる英単語をタイピングして覚えよう！無料・登録不要。",
+  "start_url": "/english-express.html",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#2563eb",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

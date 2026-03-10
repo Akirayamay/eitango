@@ -4,25 +4,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Ship Eigo">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8232796789917464"
      crossorigin="anonymous"></script>
     <title>Ship Eigo - 楽しく学べる英単語タイピングゲーム</title>
+    <meta name="description" content="Ship Eigo（シップ英語）は、コンベアベルトを流れる英単語をタイピングするゲームです。レベル1〜4対応。無料・登録不要。">
+    <meta name="keywords" content="英単語,タイピングゲーム,英語学習,ship eigo,シップ英語,無料">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://ship-eigo.web.app/english-express.html">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Ship Eigo",
+      "url": "https://ship-eigo.web.app/",
+      "description": "コンベアベルトを流れる単語をタイピングして覚える英単語学習ゲーム。レベル1〜4、練習・暗記モード対応。無料でプレイ可能。",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
+      "inLanguage": "ja"
+    }
+    </script>
     <style>
         :root {
             --bg-color: #f0f2f5;
             --conveyor-color: #333;
             --box-color: #d2b48c;
-            --primary-color: #007bff;
-            --danger-color: #dc3545;
-            --success-color: #28a745;
+            --primary-color: #2563eb;
+            --danger-color: #dc2626;
+            --success-color: #16a34a;
             --title-conveyor-speed-top: 102s;
             --title-conveyor-speed-bottom: 74.8s;
+            /* === Professional Design Tokens === */
+            --primary-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            --success-gradient: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            --danger-gradient: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 32px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-primary: 0 4px 14px rgba(37,99,235,0.35);
+            --shadow-success: 0 4px 14px rgba(22,163,74,0.35);
+            --shadow-danger: 0 4px 14px rgba(220,38,38,0.30);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
             margin: 0;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', 'Noto Sans JP', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             user-select: none;
         }
@@ -41,8 +82,11 @@
             display: flex;
             justify-content: space-between;
             padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-md);
             pointer-events: auto;
         }
 
@@ -58,12 +102,16 @@
             left: 50%;
             transform: translateX(-50%);
             font-size: 2rem;
-            font-weight: bold;
-            color: #333;
-            background: rgba(255, 255, 255, 0.9);
+            font-weight: 700;
+            color: #1e293b;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             padding: 5px 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-md);
+            letter-spacing: 0.04em;
         }
 
         #time-display.warning {
@@ -82,34 +130,40 @@
         }
 
         #home-btn {
-            background: #6c757d;
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
             color: white;
             border: none;
             padding: 5px 15px;
-            border-radius: 5px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             pointer-events: auto;
+            box-shadow: 0 2px 8px rgba(71,85,105,0.3);
+            transition: filter var(--transition-fast), transform var(--transition-fast);
         }
 
         #home-btn:hover {
-            background: #5a6268;
+            filter: brightness(1.12);
+            transform: translateY(-1px);
         }
 
         #quit-btn {
-            background: var(--danger-color);
+            background: var(--danger-gradient);
             color: white;
             border: none;
             padding: 5px 15px;
-            border-radius: 5px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             pointer-events: auto;
             margin-left: 10px;
+            box-shadow: var(--shadow-danger);
+            transition: filter var(--transition-fast), transform var(--transition-fast);
         }
 
         #quit-btn:hover {
-            background: #bd2130;
+            filter: brightness(1.1);
+            transform: translateY(-1px);
         }
 
         #combo-display {
@@ -296,9 +350,11 @@
             font-size: 1.2rem;
             cursor: pointer;
             border: none;
-            border-radius: 8px;
-            transition: transform 0.1s, background 0.2s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: var(--radius-md);
+            transition: transform var(--transition-fast), background var(--transition-base), box-shadow var(--transition-fast), filter var(--transition-fast);
+            box-shadow: var(--shadow-sm);
+            font-family: inherit;
+            letter-spacing: 0.01em;
         }
 
         button:active {
@@ -307,40 +363,60 @@
 
         .btn-lvl {
             background: #fff;
-            border: 2px solid #ddd;
-            color: #555;
+            border: 2px solid #e2e8f0;
+            color: #475569;
+            font-weight: 600;
         }
 
-        .btn-lvl:hover,
-        .btn-lvl.selected {
-            background: var(--primary-color);
-            color: white;
+        .btn-lvl:hover {
             border-color: var(--primary-color);
+            color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        .btn-lvl.selected {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent;
+            box-shadow: var(--shadow-primary);
         }
 
         .btn-mode {
-            background: #f8f9fa;
-            border: 2px solid #333;
-            color: #333;
-            font-weight: bold;
+            background: #f8fafc;
+            border: 2px solid #334155;
+            color: #334155;
+            font-weight: 700;
         }
 
-        .btn-mode:hover,
-        .btn-mode.selected {
-            background: #333;
+        .btn-mode:hover {
+            background: #334155;
             color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-mode.selected {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 14px rgba(30,41,59,0.30);
         }
 
         .btn-start {
-            background: var(--success-color);
+            background: var(--success-gradient);
             color: white;
             font-size: 1.5rem;
             padding: 20px 50px;
             margin-top: 20px;
+            box-shadow: var(--shadow-success);
+            font-weight: 700;
+            letter-spacing: 0.05em;
         }
 
         .btn-start:hover {
-            background: #218838;
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(22,163,74,0.45);
         }
 
 
@@ -443,11 +519,12 @@
 
         /* リザルト画面特有 */
         .score-box {
-            background: white;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
             padding: 8px 15px;
             /* パディング圧縮 */
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid #e2e8f0;
             text-align: center;
             margin-bottom: 10px;
             width: 100%;
@@ -457,7 +534,8 @@
             font-size: 1.8rem;
             /* 少し小さく */
             color: var(--primary-color);
-            font-weight: bold;
+            font-weight: 700;
+            letter-spacing: -0.02em;
         }
 
         .score-label {
@@ -474,19 +552,26 @@
 
         .word-card {
             background: white;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             padding: 6px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
             /* 垂直中央 */
             justify-content: flex-start;
             gap: 5px;
             font-size: 0.9rem;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 
             /* グリッドアイテムとしての挙動 */
             min-width: 0;
             /* flex/grid内での縮小崩れ防止 */
+        }
+
+        .word-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .word-card .en {
@@ -638,18 +723,27 @@
         }
 
         .btn-filter {
-            padding: 5px 10px;
+            padding: 5px 14px;
             font-size: 0.9rem;
-            border: 1px solid #ccc;
+            border: 1.5px solid #cbd5e1;
             background: white;
-            border-radius: 15px;
+            border-radius: 20px;
             cursor: pointer;
+            color: #475569;
+            font-weight: 600;
+            transition: all var(--transition-fast);
+        }
+
+        .btn-filter:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
         }
 
         .btn-filter.selected {
-            background: #333;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
             color: white;
-            border-color: #333;
+            border-color: transparent;
+            box-shadow: var(--shadow-sm);
         }
 
         /* --- 新レイアウト用CSS --- */
@@ -695,8 +789,10 @@
         }
 
         #preview-controls-container {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #ddd;
+            background: var(--glass-bg);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
             border-radius: 8px;
             padding: 5px 10px;
             margin-bottom: 8px;
@@ -1071,18 +1167,20 @@
         }
 
         .toast {
-            background: #333;
+            background: #1e293b;
             color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
             opacity: 0;
             transform: translateY(20px);
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             font-size: 0.9rem;
+            font-weight: 500;
             display: flex;
             align-items: center;
             gap: 10px;
+            border-left: 4px solid #475569;
         }
 
         .toast.show {
@@ -1131,14 +1229,20 @@
 
         .gallery-card {
             background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-lg);
             padding: 14px 18px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+            box-shadow: var(--shadow-sm);
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 12px;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .gallery-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .gallery-card-info {
@@ -1163,19 +1267,27 @@
 
         .gallery-add-btn {
             padding: 8px 14px;
-            background: #007bff;
+            background: var(--primary-gradient);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             font-size: 0.88rem;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 700;
             white-space: nowrap;
             flex-shrink: 0;
+            box-shadow: var(--shadow-primary);
+            transition: filter var(--transition-fast), transform var(--transition-fast);
+        }
+
+        .gallery-add-btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
         }
 
         .gallery-add-btn:disabled {
-            background: #6c757d;
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+            box-shadow: none;
             cursor: default;
         }
 
@@ -1687,10 +1799,13 @@
 
         /* BGMパネル */
         #title-bgm-panel {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 14px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
             padding: 10px 12px;
-            box-shadow: 0 2px 14px rgba(0, 0, 0, 0.13);
+            box-shadow: var(--shadow-md);
         }
         #title-bgm-panel .bgm-panel-title {
             text-align: center;
@@ -1707,20 +1822,20 @@
             margin-bottom: 6px;
         }
         #title-bgm-panel .bgm-track-btn {
-            background: #f0f0f0;
+            background: #f1f5f9;
             border: 2px solid transparent;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             padding: 5px 4px;
             font-size: 0.75rem;
-            font-weight: bold;
+            font-weight: 700;
             cursor: pointer;
-            color: #444;
-            transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+            color: #475569;
+            transition: background var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
         }
         #title-bgm-panel .bgm-track-btn.selected {
-            background: #ddeeff;
-            border-color: #007bff;
-            color: #007bff;
+            background: #dbeafe;
+            border-color: var(--primary-color);
+            color: var(--primary-color);
         }
         #title-bgm-panel .bgm-toggle-btn {
             display: block;
@@ -1753,10 +1868,13 @@
             top: auto;
             transform: none;
             width: auto;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 14px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
             padding: 13px 12px 12px;
-            box-shadow: 0 2px 14px rgba(0, 0, 0, 0.13);
+            box-shadow: var(--shadow-md);
             z-index: 20;
             pointer-events: none;
         }
@@ -1844,10 +1962,13 @@
             top: 50%;
             transform: translateY(-50%);
             width: 220px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 14px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
             padding: 13px 12px 12px;
-            box-shadow: 0 2px 14px rgba(0, 0, 0, 0.13);
+            box-shadow: var(--shadow-md);
             z-index: 20;
             pointer-events: none;
         }
@@ -1929,12 +2050,73 @@
         #title-bestscore-panel .level-tbl .lt-lv   { font-weight: bold; color: #333; white-space: nowrap; }
         #title-bestscore-panel .level-tbl .lt-name { color: #555; white-space: nowrap; }
         #title-bestscore-panel .level-tbl .lt-desc { color: #888; font-size: 0.68rem; text-align: right; white-space: nowrap; }
+
+        /* ===== ダークモード ===== */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #0f172a;
+                --glass-bg: rgba(30, 41, 59, 0.85);
+                --glass-border: rgba(71, 85, 105, 0.5);
+                --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+                --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+                --shadow-lg: 0 10px 32px rgba(0,0,0,0.5);
+            }
+            body { background-color: #0f172a; }
+            .screen { background: rgba(15, 23, 42, 0.97); }
+            #preview-screen, #result-screen { background: #0f172a; }
+            h1 { color: #e2e8f0; text-shadow: 2px 2px #1e293b; }
+            h2 { color: #94a3b8; }
+            .preview-title, .result-title { color: #e2e8f0; }
+            .preview-subtitle { color: #64748b; }
+            .btn-lvl { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+            .btn-lvl:hover { border-color: var(--primary-color); color: var(--primary-color); }
+            .btn-lvl.selected { background: var(--primary-gradient); color: white; }
+            .btn-mode { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+            .btn-mode.selected { background: linear-gradient(135deg,#1e293b,#334155); color: white; }
+            .hud-bar { background: rgba(15,23,42,0.9); border-color: rgba(71,85,105,0.5); }
+            .stat-box { color: #e2e8f0; }
+            #time-display { background: rgba(15,23,42,0.9); color: #e2e8f0; border-color: rgba(71,85,105,0.5); }
+            .score-box { background: linear-gradient(135deg,#1e293b,#0f172a); border-color: #334155; }
+            .score-label { color: #94a3b8; }
+            .word-card { background: #1e293b; border-color: #334155; }
+            .word-card .en { color: #e2e8f0; }
+            .word-card .ja { color: #94a3b8; }
+            #word-list-container, #word-history { background: rgba(30,41,59,0.8); border-color: #334155; }
+            #preview-controls-container { background: rgba(30,41,59,0.85); border-color: #334155; }
+            .btn-filter { background: #1e293b; border-color: #475569; color: #94a3b8; }
+            .btn-filter.selected { background: linear-gradient(135deg,#1e293b,#334155); color: white; }
+            #title-bestscore-panel, #title-bgm-panel, #title-tutorial-panel { background: rgba(30,41,59,0.9); border-color: #334155; }
+            #title-bestscore-panel .bs-panel-title,
+            #title-bestscore-panel .rank-section-title,
+            #title-bestscore-panel .level-section-title { color: #94a3b8; }
+            #title-bestscore-panel .bs-label { color: #94a3b8; }
+            #title-bestscore-panel .rank-tbl td,
+            #title-bestscore-panel .level-tbl td { border-color: #334155; }
+            #title-bestscore-panel .level-tbl .lt-lv { color: #e2e8f0; }
+            .toast { background: #334155; }
+            .gallery-card { background: #1e293b; border-color: #334155; }
+            .gallery-card-title { color: #e2e8f0; }
+            .gallery-card-count { color: #94a3b8; }
+            #gallery-screen { background: #0f172a; }
+            #gallery-screen h2 { color: #e2e8f0; }
+        }
+
+        /* ===== 画面遷移アニメーション ===== */
+        @keyframes screenFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+        .screen:not(.hidden),
+        #preview-screen:not(.hidden),
+        #result-screen:not(.hidden) {
+            animation: screenFadeIn 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+        }
     </style>
 </head>
 
 <body>
     <!-- モバイル用隠し入力フィールド（ソフトキーボード呼び出し用） -->
-    <input type="text" id="mobile-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <input type="text" id="mobile-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-hidden="true" aria-label="ゲーム入力フィールド">
     <div id="ui-layer" class="hidden">
         <div class="hud-bar">
             <div>
@@ -2070,10 +2252,10 @@
         <p class="title-subtitle">楽しく学べる英単語タイピングゲーム</p>
         <h2>レベル選択</h2>
         <div class="btn-group" id="level-buttons">
-            <button class="btn-lvl" onclick="selectLevel(1)">📖 レベル1</button>
-            <button class="btn-lvl" onclick="selectLevel(2)">📖 レベル2</button>
-            <button class="btn-lvl" onclick="selectLevel(3)">📖 レベル3</button>
-            <button class="btn-lvl" onclick="selectLevel(4)">📖 レベル4</button>
+            <button class="btn-lvl" onclick="selectLevel(1)" aria-label="レベル1（入門）を選択">📖 レベル1</button>
+            <button class="btn-lvl" onclick="selectLevel(2)" aria-label="レベル2（基礎）を選択">📖 レベル2</button>
+            <button class="btn-lvl" onclick="selectLevel(3)" aria-label="レベル3（中級）を選択">📖 レベル3</button>
+            <button class="btn-lvl" onclick="selectLevel(4)" aria-label="レベル4（上級）を選択">📖 レベル4</button>
         </div>
         <h2>出題形式</h2>
         <div class="btn-group" id="format-buttons">
@@ -2093,23 +2275,29 @@
         </div>
 
         <div style="display:flex; flex-direction:column; gap:10px; align-items:center; margin-bottom: 20px;">
-            <button class="btn-start" onclick="showPreview()">ゲームスタート</button>
+            <button class="btn-start" onclick="showPreview()" aria-label="ゲームをスタートする">ゲームスタート</button>
             <div style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
-                <button onclick="showHistory()"
+                <button onclick="showHistory()" aria-label="学習履歴を開く"
                     style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">📊
                     学習履歴</button>
-                <button onclick="openReviewListModal()"
+                <button onclick="openReviewListModal()" aria-label="復習リストを開く"
                     style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">📝
                     復習リスト</button>
-                <button onclick="openMyListModal()"
+                <button onclick="openMyListModal()" aria-label="マイ単語リストを開く"
                     style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">📖
                     マイ単語リスト</button>
-                <button onclick="openGalleryScreen()"
+                <button onclick="openGalleryScreen()" aria-label="みんなの単語帳を開く"
                     style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">🌐
                     みんなの単語帳</button>
-                <button onclick="openHelpModal()"
+                <button onclick="openHelpModal()" aria-label="遊び方を開く"
                     style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">📖
                     遊び方</button>
+                <button onclick="openStatsModal()" aria-label="統計ダッシュボードを開く"
+                    style="background:transparent; border:none; color:#007bff; text-decoration:underline; cursor:pointer; font-size:0.9rem;">📈
+                    統計</button>
+                <button onclick="openAiSettingsModal()" aria-label="AIヒントを開く"
+                    style="background:transparent; border:none; color:#7c3aed; text-decoration:underline; cursor:pointer; font-size:0.9rem;">🤖
+                    AI ヒント</button>
                 <a href="privacy.html" target="_blank"
                     style="background:transparent; border:none; color:#666; text-decoration:underline; cursor:pointer; font-size:0.85rem;">プライバシーポリシー</a>
                 <a href="https://docs.google.com/forms/d/e/1FAIpQLSdHHlgjgZRh3v1uf6R2hriVW6rOqNdoeCXCVNqfXPHW8MoKNg/viewform" target="_blank"
@@ -2280,11 +2468,11 @@
             </div>
 
             <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px;">
-                <button class="btn-start" onclick="retryGame()" style="padding:10px 20px; font-size:1rem;">🔄
+                <button class="btn-start" onclick="retryGame()" aria-label="同じ設定でもう一度プレイする" style="padding:10px 20px; font-size:1rem;">🔄
                     もう一度プレイ</button>
-                <button class="btn-start" id="retry-mistakes-btn" onclick="retryMistakesOnly()"
+                <button class="btn-start" id="retry-mistakes-btn" onclick="retryMistakesOnly()" aria-label="間違えた・怪しい単語だけを復習する"
                     style="padding:10px 20px; font-size:1rem; background:#ff6b35;">📝 間違えた・怪しい単語を復習</button>
-                <button class="btn-home" onclick="goHome()" style="padding:10px 20px; font-size:1rem;">🏠
+                <button class="btn-home" onclick="goHome()" aria-label="タイトル画面に戻る" style="padding:10px 20px; font-size:1rem;">🏠
                     タイトルに戻る</button>
             </div>
             <!-- 一括追加ボタン -->
@@ -2298,6 +2486,89 @@
                     ⚠️ 怪しいをマイリストへ追加
                 </button>
             </div>
+            <!-- SNS シェアボタン -->
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px;">
+                <button onclick="shareScore()" aria-label="スコアをSNSでシェアする"
+                    style="padding:8px 20px; font-size:0.95rem; background:linear-gradient(135deg,#1da1f2,#0d8ecf); color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; box-shadow:0 4px 14px rgba(29,161,242,0.4); transition:filter 0.15s, transform 0.15s;"
+                    onmouseover="this.style.filter='brightness(1.1)';this.style.transform='translateY(-1px)'"
+                    onmouseout="this.style.filter='';this.style.transform=''">
+                    🐦 スコアをシェア
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 統計ダッシュボードモーダル -->
+    <div id="stats-modal" class="hidden"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;">
+        <div style="background:white;padding:20px;border-radius:15px;max-width:700px;width:95%;height:88%;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.3);overflow:hidden;">
+            <h3 style="margin:0 0 12px 0;color:#333;text-align:center;">📈 学習統計ダッシュボード</h3>
+            <div style="flex:1;overflow-y:auto;">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:15px;">
+                    <div style="background:#f0f9ff;border-radius:10px;padding:12px;text-align:center;">
+                        <div style="font-size:0.75rem;color:#666;">総プレイ数</div>
+                        <div id="stats-total-plays" style="font-size:1.5rem;font-weight:bold;color:#2563eb;">0</div>
+                    </div>
+                    <div style="background:#f0fdf4;border-radius:10px;padding:12px;text-align:center;">
+                        <div style="font-size:0.75rem;color:#666;">平均正解率</div>
+                        <div id="stats-avg-accuracy" style="font-size:1.5rem;font-weight:bold;color:#16a34a;">0%</div>
+                    </div>
+                    <div style="background:#fefce8;border-radius:10px;padding:12px;text-align:center;">
+                        <div style="font-size:0.75rem;color:#666;">累計スコア</div>
+                        <div id="stats-total-score" style="font-size:1.5rem;font-weight:bold;color:#ca8a04;">0</div>
+                    </div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <h4 style="margin:0 0 8px;color:#555;font-size:0.9rem;">📊 スコア推移（直近20回）</h4>
+                    <div style="position:relative;height:160px;"><canvas id="stats-score-chart"></canvas></div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <h4 style="margin:0 0 8px;color:#555;font-size:0.9rem;">🎯 正解率推移（直近20回）</h4>
+                    <div style="position:relative;height:140px;"><canvas id="stats-accuracy-chart"></canvas></div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <h4 style="margin:0 0 8px;color:#555;font-size:0.9rem;">📚 レベル別成績</h4>
+                    <div id="stats-level-breakdown" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:0.85rem;"></div>
+                </div>
+                <div>
+                    <h4 style="margin:0 0 8px;color:#555;font-size:0.9rem;">⚠️ 苦手単語 TOP10</h4>
+                    <div id="stats-weak-words" style="font-size:0.85rem;border:1px solid #eee;border-radius:8px;overflow:hidden;"></div>
+                </div>
+            </div>
+            <button onclick="document.getElementById('stats-modal').classList.add('hidden')"
+                style="margin-top:12px;padding:10px;background:#6b7280;color:white;border:none;border-radius:8px;font-size:1rem;cursor:pointer;width:100%;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- AI ヒント設定モーダル -->
+    <div id="ai-settings-modal" class="hidden"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;">
+        <div style="background:white;padding:25px;border-radius:15px;max-width:480px;width:90%;box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 15px 0;color:#333;text-align:center;">🤖 AI ヒント設定</h3>
+            <p style="font-size:0.85rem;color:#666;margin-bottom:15px;">
+                Anthropic Claude APIキーを入力すると、苦手単語に対してAIが例文・覚え方を生成します。<br>
+                <span style="color:#dc3545;font-size:0.8rem;">※ APIキーはお使いのブラウザにのみ保存されます。</span>
+            </p>
+            <label style="font-weight:bold;font-size:0.9rem;display:block;margin-bottom:5px;">Anthropic API Key</label>
+            <input type="password" id="ai-api-key-input" placeholder="sk-ant-..."
+                style="width:100%;padding:10px;border:2px solid #ddd;border-radius:8px;font-size:0.9rem;box-sizing:border-box;margin-bottom:10px;">
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button onclick="saveAiApiKey()"
+                    style="padding:10px 25px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:bold;">保存して生成</button>
+                <button onclick="document.getElementById('ai-settings-modal').classList.add('hidden')"
+                    style="padding:10px 25px;background:#6b7280;color:white;border:none;border-radius:8px;font-size:1rem;cursor:pointer;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI ヒント表示モーダル -->
+    <div id="ai-hint-modal" class="hidden"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;">
+        <div style="background:white;padding:25px;border-radius:15px;max-width:600px;width:90%;height:80%;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.3);overflow:hidden;">
+            <h3 style="margin:0 0 15px 0;color:#7c3aed;text-align:center;">🤖 AI 苦手単語ヒント</h3>
+            <div id="ai-hint-content" style="flex:1;overflow-y:auto;font-size:0.9rem;color:#333;line-height:1.7;"></div>
+            <button onclick="document.getElementById('ai-hint-modal').classList.add('hidden')"
+                style="margin-top:15px;padding:10px;background:#6b7280;color:white;border:none;border-radius:8px;font-size:1rem;cursor:pointer;width:100%;">閉じる</button>
         </div>
     </div>
 
@@ -7513,6 +7784,174 @@
         });
 
 
+
+
+    // ===== Step5: visualViewport Mobile UX =====
+    (function initVisualViewport() {
+        if (!window.visualViewport || !isMobile) return;
+        const gc = document.getElementById('game-container');
+        if (!gc) return;
+        function onVVResize() {
+            const kbH = Math.max(0, window.innerHeight - window.visualViewport.height);
+            gc.style.height = kbH > 50 ? window.visualViewport.height + 'px' : '100vh';
+        }
+        window.visualViewport.addEventListener('resize', onVVResize);
+    })();
+
+    // ===== Step6: SNS シェア機能 =====
+    function shareScore() {
+        const score = document.getElementById('final-score')?.innerText || '0';
+        const rank  = document.getElementById('final-rank')?.innerText  || '';
+        const acc   = document.getElementById('final-accuracy')?.innerText || '';
+        const combo = document.getElementById('final-combo')?.innerText || '0';
+        const text = `【Ship Eigo】スコア:${score}点 / 役職:${rank} / 正解率:${acc} / コンボ:${combo}\n#ShipEigo #英単語タイピング`;
+        const url  = 'https://ship-eigo.web.app/';
+        if (navigator.share) {
+            navigator.share({ title: 'Ship Eigo スコア', text, url }).catch(() => {});
+        } else {
+            window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text + '\n' + url),
+                '_blank', 'noopener,noreferrer');
+        }
+    }
+    window.shareScore = shareScore;
+
+    // ===== Step7: 統計ダッシュボード =====
+    let statsChartInstances = {};
+    function openStatsModal() {
+        document.getElementById('stats-modal').classList.remove('hidden');
+        renderStatsModal();
+    }
+    function renderStatsModal() {
+        const history = AppState.learningHistory || [];
+        const weakWords = AppState.weakWords || {};
+        const totalPlays = history.length;
+        const totalScore = history.reduce((s, h) => s + (h.score || 0), 0);
+        const avgAccuracy = totalPlays > 0
+            ? Math.round(history.reduce((s, h) => s + (h.accuracy || 0), 0) / totalPlays) : 0;
+        document.getElementById('stats-total-plays').innerText = totalPlays;
+        document.getElementById('stats-avg-accuracy').innerText = avgAccuracy + '%';
+        document.getElementById('stats-total-score').innerText = totalScore.toLocaleString();
+
+        const recent = history.slice(-20);
+        const labels = recent.map((_, i) => '#' + (history.length - recent.length + i + 1));
+        const scores = recent.map(h => h.score || 0);
+        const accuracies = recent.map(h => h.accuracy || 0);
+
+        if (typeof Chart !== 'undefined') {
+            ['stats-score-chart', 'stats-accuracy-chart'].forEach(id => {
+                if (statsChartInstances[id]) { statsChartInstances[id].destroy(); delete statsChartInstances[id]; }
+            });
+            const scoreCtx = document.getElementById('stats-score-chart');
+            if (scoreCtx) {
+                statsChartInstances['stats-score-chart'] = new Chart(scoreCtx, {
+                    type: 'line',
+                    data: { labels, datasets: [{ label: 'スコア', data: scores, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.3, pointRadius: 3 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { ticks: { font: { size: 10 } } } } }
+                });
+            }
+            const accCtx = document.getElementById('stats-accuracy-chart');
+            if (accCtx) {
+                statsChartInstances['stats-accuracy-chart'] = new Chart(accCtx, {
+                    type: 'bar',
+                    data: { labels, datasets: [{ label: '正解率(%)', data: accuracies, backgroundColor: accuracies.map(a => a >= 80 ? 'rgba(22,163,74,0.7)' : a >= 60 ? 'rgba(234,179,8,0.7)' : 'rgba(220,38,38,0.7)'), borderRadius: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }, x: { ticks: { font: { size: 10 } } } } }
+                });
+            }
+        }
+
+        const levelBreakdown = document.getElementById('stats-level-breakdown');
+        if (levelBreakdown) {
+            levelBreakdown.innerHTML = [1,2,3,4].map(lv => {
+                const lvH = history.filter(h => h.level === lv);
+                const n = lvH.length;
+                const avgS = n > 0 ? Math.round(lvH.reduce((s,h) => s+(h.score||0),0)/n) : 0;
+                const avgA = n > 0 ? Math.round(lvH.reduce((s,h) => s+(h.accuracy||0),0)/n) : 0;
+                return `<div style="background:#f8fafc;border-radius:8px;padding:10px;border:1px solid #e2e8f0;">
+                    <div style="font-weight:bold;color:#334155;">Lv.${lv}</div>
+                    <div style="color:#666;">${n}回プレイ</div>
+                    <div style="color:#2563eb;">平均 ${avgS.toLocaleString()}点</div>
+                    <div style="color:#16a34a;">正解率 ${avgA}%</div></div>`;
+            }).join('');
+        }
+
+        const weakContainer = document.getElementById('stats-weak-words');
+        if (weakContainer) {
+            const topWeak = Object.values(weakWords).filter(w => w.missCount > 0)
+                .sort((a,b) => b.missCount - a.missCount).slice(0, 10);
+            weakContainer.innerHTML = topWeak.length === 0
+                ? '<div style="padding:15px;text-align:center;color:#999;">苦手単語データなし</div>'
+                : topWeak.map((w,i) =>
+                    `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #f0f0f0;${i===topWeak.length-1?'border-bottom:none':''}">
+                        <span style="color:#dc3545;font-weight:bold;min-width:20px;">${i+1}</span>
+                        <span style="font-weight:bold;">${w.en}</span>
+                        <span style="color:#666;">${w.ja}</span>
+                        <span style="margin-left:auto;color:#dc3545;font-size:0.85rem;">${w.missCount}回ミス</span>
+                    </div>`).join('');
+        }
+    }
+    window.openStatsModal = openStatsModal;
+
+    // ===== Step8: AI ヒント機能 =====
+    function openAiSettingsModal() {
+        const modal = document.getElementById('ai-settings-modal');
+        if (!modal) return;
+        const savedKey = localStorage.getItem('shipEigo_aiApiKey');
+        const input = document.getElementById('ai-api-key-input');
+        if (savedKey && input) input.value = savedKey;
+        modal.classList.remove('hidden');
+    }
+    function saveAiApiKey() {
+        const input = document.getElementById('ai-api-key-input');
+        if (!input || !input.value.trim()) { showToast('APIキーを入力してください', 'warning'); return; }
+        localStorage.setItem('shipEigo_aiApiKey', input.value.trim());
+        document.getElementById('ai-settings-modal').classList.add('hidden');
+        generateWordHint();
+    }
+    async function callClaudeAPI(prompt) {
+        const apiKey = localStorage.getItem('shipEigo_aiApiKey');
+        if (!apiKey) throw new Error('APIキーが設定されていません');
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] })
+        });
+        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+        return (await res.json()).content[0]?.text || '';
+    }
+    async function generateWordHint() {
+        const weakWords = AppState.weakWords || {};
+        const topWeak = Object.values(weakWords).filter(w => w.missCount > 0)
+            .sort((a,b) => b.missCount - a.missCount).slice(0, 5);
+        if (topWeak.length === 0) { showToast('苦手単語がまだありません。ゲームをプレイしてから使用してください', 'warning'); return; }
+        const modal = document.getElementById('ai-hint-modal');
+        const content = document.getElementById('ai-hint-content');
+        if (!modal || !content) return;
+        content.innerHTML = '<div style="text-align:center;color:#999;padding:30px;">🤖 AIが例文と覚え方を生成中...</div>';
+        modal.classList.remove('hidden');
+        const wordList = topWeak.map(w => `- ${w.en}（${w.ja}）：${w.missCount}回ミス`).join('\n');
+        const prompt = `以下は英語学習者が特に苦手な単語です。各単語について日本人学習者向けに次を提供してください：\n1. わかりやすい例文（英語＋日本語訳）\n2. 記憶に残りやすい覚え方のコツ\n\n${wordList}\n\n各単語を<h4>で区切り、例文は<blockquote>タグで囲んでください。日本語でわかりやすく説明してください。`;
+        try {
+            const result = await callClaudeAPI(prompt);
+            content.innerHTML = result;
+        } catch (err) {
+            content.innerHTML = `<div style="color:#dc3545;padding:20px;text-align:center;"><strong>エラーが発生しました</strong><br><span style="font-size:0.85rem;">${err.message}</span><br><span style="font-size:0.8rem;color:#666;">APIキーを再確認してください</span></div>`;
+        }
+    }
+    window.openAiSettingsModal = openAiSettingsModal;
+    window.saveAiApiKey = saveAiApiKey;
+    window.generateWordHint = generateWordHint;
+
+    // ===== Step9: Service Worker 登録 =====
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(err => console.warn('[SW] Registration failed:', err));
+        });
+    }
 
     </script>
 </body>
