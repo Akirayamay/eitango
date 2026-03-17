@@ -17,7 +17,8 @@
     <meta name="keywords" content="英単語,タイピングゲーム,英語学習,ship eigo,シップ英語,無料">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://ship-eigo.web.app/english-express.html">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsd
+    elivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -7766,7 +7767,7 @@
                         if (window.updateAppUsernameDisplay) window.updateAppUsernameDisplay(usernameInDoc);
                     } else {
                         console.log("[Auth] Username not set — prompting registration");
-                        if (window.openUsernameModal) window.openUsernameModal();
+                        if (firestoreReadOk && window.openUsernameModal) window.openUsernameModal();
                     }
                 } catch (e) {
                     console.error("[Auth] Username check error:", e);
